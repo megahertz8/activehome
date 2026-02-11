@@ -35,3 +35,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 *.db
+.env.local
+
+# Local EPC database (7.4GB)
+data/
+
+# Supabase
+supabase/.temp/

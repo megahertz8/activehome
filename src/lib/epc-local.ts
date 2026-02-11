@@ -1,17 +1,19 @@
-import Database from "better-sqlite3";
 import { resolve } from "path";
 
 const DB_PATH = resolve(process.cwd(), "data/epc.db");
 
-let db: Database.Database | null = null;
+let db: import("better-sqlite3").Database | null = null;
 
-function getDb(): Database.Database {
+function getDb(): import("better-sqlite3").Database {
   if (!db) {
+    // Dynamic require to avoid loading native module during compilation
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const Database = require("better-sqlite3");
     db = new Database(DB_PATH, { readonly: true });
-    db.pragma("journal_mode = WAL");
-    db.pragma("cache_size = -500000"); // 500MB read cache
+    (db as import("better-sqlite3").Database).pragma("journal_mode = WAL");
+    (db as import("better-sqlite3").Database).pragma("cache_size = -50000"); // 50MB read cache
   }
-  return db;
+  return db as import("better-sqlite3").Database;
 }
 
 export interface EPCRecord {
@@ -57,26 +59,24 @@ export function getByAddress(postcode: string, address: string): EPCRecord | und
   ).get(normalized, address) as EPCRecord | undefined;
 }
 
-// Neighborhood stats for comparison
+// Neighborhood stats for comparison — uses exact postcode only (fast indexed lookup)
 export function getPostcodeStats(postcode: string): {
   avgEfficiency: number;
   totalHomes: number;
   ratingDistribution: Record<string, number>;
 } {
   const d = getDb();
-  // Use postcode prefix (outward code) for neighborhood
-  const outward = postcode.trim().toUpperCase().split(" ")[0];
+  const normalized = postcode.trim().toUpperCase().replace(/\s+/g, " ");
 
   const stats = d.prepare(`
     SELECT 
-      AVG(current_energy_efficiency) as avg_eff,
-      COUNT(*) as total,
       current_energy_rating as rating,
-      COUNT(*) as count
+      COUNT(*) as count,
+      AVG(current_energy_efficiency) as avg_eff
     FROM certificates 
-    WHERE postcode LIKE ? || '%'
+    WHERE postcode = ?
     GROUP BY current_energy_rating
-  `).all(`${outward} `) as { avg_eff: number; total: number; rating: string; count: number }[];
+  `).all(normalized) as { rating: string; count: number; avg_eff: number }[];
 
   const distribution: Record<string, number> = {};
   let totalHomes = 0;

@@ -1,38 +1,39 @@
 #!/usr/bin/env npx tsx
 /**
- * Import UK EPC CSV data into SQLite for fast local lookups.
+ * Import UK EPC CSV data (347 local authority files) into SQLite.
  *
  * Usage:
- *   npx tsx scripts/import-epc.ts /path/to/epc-certificates.csv
+ *   npx tsx scripts/import-epc.ts data/raw
  *
- * The CSV can be downloaded from https://epc.opendatacommunities.org/domestic/search
- * (click "Download" → all results as CSV).
- *
- * Creates/overwrites: data/epc.db (~2-3GB for full UK dataset)
+ * Expects directory structure:
+ *   data/raw/domestic-XXXXX-Name/certificates.csv
  */
 
 import Database from "better-sqlite3";
-import { createReadStream } from "fs";
+import { createReadStream, readdirSync, statSync, existsSync } from "fs";
 import { createInterface } from "readline";
-import { resolve } from "path";
+import { resolve, join } from "path";
 
-const csvPath = process.argv[2];
-if (!csvPath) {
-  console.error("Usage: npx tsx scripts/import-epc.ts <path-to-csv>");
+const rawDir = process.argv[2] || resolve(__dirname, "../data/raw");
+if (!existsSync(rawDir)) {
+  console.error(`Directory not found: ${rawDir}`);
   process.exit(1);
 }
 
 const dbPath = resolve(__dirname, "../data/epc.db");
+console.log(`Output: ${dbPath}`);
+
+// Remove old DB
+try { require("fs").unlinkSync(dbPath); } catch {}
+
 const db = new Database(dbPath);
-
-// Optimize for bulk insert
-db.pragma("journal_mode = WAL");
+db.pragma("journal_mode = OFF");
 db.pragma("synchronous = OFF");
-db.pragma("cache_size = -2000000"); // 2GB cache
+db.pragma("cache_size = -2000000");
+db.pragma("temp_store = MEMORY");
 
-console.log("Creating tables...");
+console.log("Creating table...");
 db.exec(`
-  DROP TABLE IF EXISTS certificates;
   CREATE TABLE certificates (
     lmk_key TEXT PRIMARY KEY,
     address TEXT,
@@ -66,35 +67,30 @@ db.exec(`
 
 const insert = db.prepare(`
   INSERT OR REPLACE INTO certificates VALUES (
-    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+    @lmk_key, @address, @postcode,
+    @current_energy_rating, @potential_energy_rating,
+    @current_energy_efficiency, @potential_energy_efficiency,
+    @property_type, @built_form, @total_floor_area,
+    @energy_consumption_current, @co2_emissions_current,
+    @heating_cost_current, @hot_water_cost_current, @lighting_cost_current,
+    @heating_cost_potential, @hot_water_cost_potential, @lighting_cost_potential,
+    @walls_description, @roof_description, @floor_description,
+    @windows_description, @mainheat_description, @main_fuel,
+    @lodgement_date, @constituency, @local_authority
   )
 `);
 
-const insertMany = db.transaction((rows: string[][]) => {
-  for (const r of rows) {
-    insert.run(...r);
-  }
+const insertMany = db.transaction((rows: Record<string, string | number>[]) => {
+  for (const r of rows) insert.run(r);
 });
 
-// Map CSV headers to our columns
-const COLUMN_MAP: Record<string, number> = {};
-let headersParsed = false;
-let batch: string[][] = [];
-let total = 0;
-const BATCH_SIZE = 50000;
+// Find all certificate CSV files
+const dirs = readdirSync(rawDir).filter((d) => {
+  const p = join(rawDir, d);
+  return statSync(p).isDirectory() && existsSync(join(p, "certificates.csv"));
+});
 
-const FIELDS = [
-  "LMK_KEY", "ADDRESS", "POSTCODE",
-  "CURRENT_ENERGY_RATING", "POTENTIAL_ENERGY_RATING",
-  "CURRENT_ENERGY_EFFICIENCY", "POTENTIAL_ENERGY_EFFICIENCY",
-  "PROPERTY_TYPE", "BUILT_FORM", "TOTAL_FLOOR_AREA",
-  "ENERGY_CONSUMPTION_CURRENT", "CO2_EMISSIONS_CURRENT",
-  "HEATING_COST_CURRENT", "HOT_WATER_COST_CURRENT", "LIGHTING_COST_CURRENT",
-  "HEATING_COST_POTENTIAL", "HOT_WATER_COST_POTENTIAL", "LIGHTING_COST_POTENTIAL",
-  "WALLS_DESCRIPTION", "ROOF_DESCRIPTION", "FLOOR_DESCRIPTION",
-  "WINDOWS_DESCRIPTION", "MAINHEAT_DESCRIPTION", "MAIN_FUEL",
-  "LODGEMENT_DATE", "CONSTITUENCY", "LOCAL_AUTHORITY",
-];
+console.log(`Found ${dirs.length} local authority directories`);
 
 function parseCsvLine(line: string): string[] {
   const result: string[] = [];
@@ -105,63 +101,116 @@ function parseCsvLine(line: string): string[] {
     if (ch === '"') {
       inQuotes = !inQuotes;
     } else if (ch === "," && !inQuotes) {
-      result.push(current.trim());
+      result.push(current);
       current = "";
     } else {
       current += ch;
     }
   }
-  result.push(current.trim());
+  result.push(current);
   return result;
 }
 
-const rl = createInterface({
-  input: createReadStream(csvPath, { encoding: "utf-8" }),
-  crlfDelay: Infinity,
-});
+async function processFile(csvPath: string): Promise<number> {
+  return new Promise((resolve) => {
+    let headers: string[] = [];
+    let headerMap: Record<string, number> = {};
+    let batch: Record<string, string | number>[] = [];
+    let count = 0;
+    const BATCH_SIZE = 50000;
 
-rl.on("line", (line) => {
-  if (!headersParsed) {
-    const headers = parseCsvLine(line).map((h) => h.replace(/^"|"$/g, "").toUpperCase().replace(/-/g, "_"));
-    for (let i = 0; i < headers.length; i++) {
-      COLUMN_MAP[headers[i]] = i;
-    }
-    headersParsed = true;
-    return;
-  }
+    const rl = createInterface({
+      input: createReadStream(csvPath, { encoding: "utf-8" }),
+      crlfDelay: Infinity,
+    });
 
-  const cols = parseCsvLine(line);
-  const row = FIELDS.map((f) => {
-    const idx = COLUMN_MAP[f];
-    return idx !== undefined ? (cols[idx] || "") : "";
+    rl.on("line", (line) => {
+      if (headers.length === 0) {
+        headers = parseCsvLine(line).map((h) => h.replace(/^"|"$/g, ""));
+        headers.forEach((h, i) => (headerMap[h] = i));
+        return;
+      }
+
+      const cols = parseCsvLine(line);
+      const get = (key: string) => (cols[headerMap[key]] || "").replace(/^"|"$/g, "");
+
+      // Combine ADDRESS1 + ADDRESS2 + ADDRESS3
+      const addr = [get("ADDRESS1"), get("ADDRESS2"), get("ADDRESS3")]
+        .filter(Boolean)
+        .join(", ");
+
+      batch.push({
+        lmk_key: get("LMK_KEY"),
+        address: addr,
+        postcode: get("POSTCODE"),
+        current_energy_rating: get("CURRENT_ENERGY_RATING"),
+        potential_energy_rating: get("POTENTIAL_ENERGY_RATING"),
+        current_energy_efficiency: Number(get("CURRENT_ENERGY_EFFICIENCY")) || 0,
+        potential_energy_efficiency: Number(get("POTENTIAL_ENERGY_EFFICIENCY")) || 0,
+        property_type: get("PROPERTY_TYPE"),
+        built_form: get("BUILT_FORM"),
+        total_floor_area: Number(get("TOTAL_FLOOR_AREA")) || 0,
+        energy_consumption_current: Number(get("ENERGY_CONSUMPTION_CURRENT")) || 0,
+        co2_emissions_current: Number(get("CO2_EMISSIONS_CURRENT")) || 0,
+        heating_cost_current: Number(get("HEATING_COST_CURRENT")) || 0,
+        hot_water_cost_current: Number(get("HOT_WATER_COST_CURRENT")) || 0,
+        lighting_cost_current: Number(get("LIGHTING_COST_CURRENT")) || 0,
+        heating_cost_potential: Number(get("HEATING_COST_POTENTIAL")) || 0,
+        hot_water_cost_potential: Number(get("HOT_WATER_COST_POTENTIAL")) || 0,
+        lighting_cost_potential: Number(get("LIGHTING_COST_POTENTIAL")) || 0,
+        walls_description: get("WALLS_DESCRIPTION"),
+        roof_description: get("ROOF_DESCRIPTION"),
+        floor_description: get("FLOOR_DESCRIPTION"),
+        windows_description: get("WINDOWS_DESCRIPTION"),
+        mainheat_description: get("MAINHEAT_DESCRIPTION"),
+        main_fuel: get("MAIN_FUEL"),
+        lodgement_date: get("LODGEMENT_DATE"),
+        constituency: get("CONSTITUENCY"),
+        local_authority: get("LOCAL_AUTHORITY"),
+      });
+
+      count++;
+      if (batch.length >= BATCH_SIZE) {
+        insertMany(batch);
+        batch = [];
+      }
+    });
+
+    rl.on("close", () => {
+      if (batch.length > 0) insertMany(batch);
+      resolve(count);
+    });
   });
+}
 
-  batch.push(row);
-  total++;
+async function main() {
+  let totalRecords = 0;
+  const startTime = Date.now();
 
-  if (batch.length >= BATCH_SIZE) {
-    insertMany(batch);
-    batch = [];
-    process.stdout.write(`\rImported ${total.toLocaleString()} records...`);
-  }
-});
-
-rl.on("close", () => {
-  if (batch.length > 0) {
-    insertMany(batch);
+  for (let i = 0; i < dirs.length; i++) {
+    const csvPath = join(rawDir, dirs[i], "certificates.csv");
+    const count = await processFile(csvPath);
+    totalRecords += count;
+    const elapsed = ((Date.now() - startTime) / 1000).toFixed(0);
+    process.stdout.write(
+      `\r[${i + 1}/${dirs.length}] ${dirs[i].replace("domestic-", "").substring(10)} — ${count.toLocaleString()} records (total: ${totalRecords.toLocaleString()}, ${elapsed}s)`
+    );
   }
 
   console.log(`\n\nCreating indexes...`);
   db.exec(`
-    CREATE INDEX IF NOT EXISTS idx_postcode ON certificates(postcode);
-    CREATE INDEX IF NOT EXISTS idx_address ON certificates(address);
-    CREATE INDEX IF NOT EXISTS idx_rating ON certificates(current_energy_rating);
-    CREATE INDEX IF NOT EXISTS idx_local_authority ON certificates(local_authority);
-    CREATE INDEX IF NOT EXISTS idx_lodgement ON certificates(lodgement_date);
+    CREATE INDEX idx_postcode ON certificates(postcode);
+    CREATE INDEX idx_rating ON certificates(current_energy_rating);
+    CREATE INDEX idx_local_authority ON certificates(local_authority);
+    CREATE INDEX idx_lodgement ON certificates(lodgement_date);
   `);
 
-  console.log(`\nDone! Imported ${total.toLocaleString()} certificates into ${dbPath}`);
-  console.log(`DB size: ${(require("fs").statSync(dbPath).size / 1024 / 1024).toFixed(0)} MB`);
+  const dbSize = (statSync(dbPath).size / 1024 / 1024 / 1024).toFixed(2);
+  const elapsed = ((Date.now() - startTime) / 1000 / 60).toFixed(1);
+  console.log(`\n✅ Done! ${totalRecords.toLocaleString()} certificates imported in ${elapsed} minutes`);
+  console.log(`📦 DB size: ${dbSize} GB at ${dbPath}`);
 
   db.close();
-});
+}
+
+main();
