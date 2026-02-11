@@ -1,65 +1,100 @@
-import Image from "next/image";
+"use client";
+
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function Home() {
+  const [postcode, setPostcode] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!postcode.trim()) return;
+    setLoading(true);
+    // TODO: Navigate to /score?postcode=XX
+    window.location.href = `/score?postcode=${encodeURIComponent(postcode.trim().toUpperCase())}`;
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+    <main className="flex flex-col items-center justify-center min-h-screen px-4">
+      {/* Hero */}
+      <div className="text-center max-w-2xl mx-auto mb-12">
+        <h1 className="text-4xl md:text-6xl font-bold mb-4">
+          <span className="text-primary">Evolving</span> Home
+        </h1>
+        <p className="text-xl md:text-2xl text-muted-foreground mb-2">
+          Your home&apos;s energy score in 30 seconds
+        </p>
+        <p className="text-muted-foreground">
+          Free. Private. No app download needed.
+        </p>
+      </div>
+
+      {/* Search */}
+      <form onSubmit={handleSearch} className="w-full max-w-md mb-16">
+        <div className="flex gap-2">
+          <Input
+            type="text"
+            placeholder="Enter your UK postcode (e.g. SW1A 1AA)"
+            value={postcode}
+            onChange={(e) => setPostcode(e.target.value)}
+            className="bg-card border-border text-foreground placeholder:text-muted-foreground h-12 text-lg"
+          />
+          <Button
+            type="submit"
+            disabled={loading}
+            className="bg-primary text-primary-foreground hover:bg-primary/90 h-12 px-6 text-lg font-semibold"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+            {loading ? "..." : "Score"}
+          </Button>
         </div>
-      </main>
-    </div>
+        <p className="text-xs text-muted-foreground mt-2 text-center">
+          🔒 We don&apos;t store your address. Data comes from public UK EPC records.
+        </p>
+      </form>
+
+      {/* Value Props */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl w-full">
+        <Card className="bg-card border-border">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-primary text-lg">💰 See Your Savings</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground text-sm">
+              Find out how much you&apos;re overpaying on energy and what improvements could save you £100s per year.
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-card border-border">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-primary text-lg">🏠 Improvement Plan</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground text-sm">
+              Get a personalised plan with costs, savings, and government grants you may be eligible for.
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-card border-border">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-primary text-lg">🔧 Find Contractors</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground text-sm">
+              Connect with TrustMark-certified local contractors to make improvements and boost your score.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Footer */}
+      <footer className="mt-16 mb-8 text-center text-muted-foreground text-xs">
+        <p>© 2026 Evolving Home · Privacy-first · Open source energy models</p>
+      </footer>
+    </main>
   );
 }
