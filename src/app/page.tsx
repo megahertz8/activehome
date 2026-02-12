@@ -1,21 +1,34 @@
 "use client";
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import PostcodeForm from "@/components/PostcodeForm";
 
-export default function Home() {
-  const [postcode, setPostcode] = useState("");
-  const [loading, setLoading] = useState(false);
+function HomeContent() {
+  const searchParams = useSearchParams();
+  const scan = searchParams.get("scan");
+  const postcode = searchParams.get("postcode");
+  const lat = searchParams.get("lat");
+  const lng = searchParams.get("lng");
 
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!postcode.trim()) return;
-    setLoading(true);
-    // TODO: Navigate to /score?postcode=XX
-    window.location.href = `/score?postcode=${encodeURIComponent(postcode.trim().toUpperCase())}`;
-  };
+  useEffect(() => {
+    if (scan === "true" && postcode) {
+      // Redirect to score page with params
+      window.location.href = `/score?postcode=${encodeURIComponent(postcode)}${lat && lng ? `&lat=${lat}&lng=${lng}` : ""}`;
+    }
+  }, [scan, postcode, lat, lng]);
+
+  if (scan === "true" && postcode) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="text-4xl mb-4 animate-pulse">🏠</div>
+          <p className="text-muted-foreground">Scanning your home...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <main className="flex flex-col items-center justify-center min-h-screen px-4">
@@ -33,27 +46,7 @@ export default function Home() {
       </div>
 
       {/* Search */}
-      <form onSubmit={handleSearch} className="w-full max-w-md mb-16">
-        <div className="flex gap-2">
-          <Input
-            type="text"
-            placeholder="Enter your UK postcode (e.g. SW1A 1AA)"
-            value={postcode}
-            onChange={(e) => setPostcode(e.target.value)}
-            className="bg-card border-border text-foreground placeholder:text-muted-foreground h-12 text-lg"
-          />
-          <Button
-            type="submit"
-            disabled={loading}
-            className="bg-primary text-primary-foreground hover:bg-primary/90 h-12 px-6 text-lg font-semibold"
-          >
-            {loading ? "..." : "Score"}
-          </Button>
-        </div>
-        <p className="text-xs text-muted-foreground mt-2 text-center">
-          🔒 We don&apos;t store your address. Data comes from public UK EPC records.
-        </p>
-      </form>
+      <PostcodeForm />
 
       {/* Value Props */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl w-full">
@@ -96,5 +89,20 @@ export default function Home() {
         <p>© 2026 Evolving Home · Privacy-first · Open source energy models</p>
       </footer>
     </main>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="text-4xl mb-4 animate-pulse">🏠</div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    }>
+      <HomeContent />
+    </Suspense>
   );
 }

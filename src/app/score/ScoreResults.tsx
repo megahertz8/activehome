@@ -6,6 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
+import Head from "next/head";
+import ShareDialog from "@/components/ShareDialog";
+import SatelliteMap from "@/components/SatelliteMap";
 
 interface BuildingGeometry {
   footprintArea_m2: number;
@@ -87,18 +90,22 @@ export default function ScoreResults() {
   const searchParams = useSearchParams();
   const postcode = searchParams.get("postcode") || "";
   const address = searchParams.get("address") || "";
+  const latParam = searchParams.get("lat");
+  const lngParam = searchParams.get("lng");
   const [data, setData] = useState<EPCData | null>(null);
   const [addresses, setAddresses] = useState<{ address: string; lmk: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [integrationsLoading, setIntegrationsLoading] = useState(false);
+  const [savingHome, setSavingHome] = useState(false);
+  const [coordinates, setCoordinates] = useState<{ lat: number; lng: number } | null>(null);
 
   useEffect(() => {
     if (!postcode) return;
 
     async function fetchEPC() {
       try {
-        const res = await fetch(`/api/epc?postcode=${encodeURIComponent(postcode)}${address ? `&address=${encodeURIComponent(address)}` : ""}`);
+        const res = await fetch(`/api/epc?postcode=${encodeURIComponent(postcode)}${address ? `&address=${encodeURIComponent(address)}` : ""}${latParam && lngParam ? `&lat=${latParam}&lng=${lngParam}` : ""}`);
         const json = await res.json();
 
         if (json.addresses) {
@@ -122,7 +129,102 @@ export default function ScoreResults() {
     }
 
     fetchEPC();
-  }, [postcode, address]);
+  }, [postcode, address, latParam, lngParam]);
+
+  // Geocode for map
+  useEffect(() => {
+    if (data && !coordinates) {
+      const geocodeForMap = async () => {
+        try {
+          // If we have lat/lng from URL, use it
+          if (latParam && lngParam) {
+            setCoordinates({
+              lat: parseFloat(latParam),
+              lng: parseFloat(lngParam)
+            });
+            return;
+          }
+
+          // Otherwise, geocode the address using Google Maps
+          const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+          if (!apiKey) return;
+
+          // Load Google Maps API if not loaded
+          if (typeof google === 'undefined') {
+            const script = document.createElement('script');
+            script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=geometry`;
+            script.async = true;
+            script.defer = true;
+            document.head.appendChild(script);
+            script.onload = () => {
+              const geocoder = new google.maps.Geocoder();
+              geocoder.geocode({ address: data.address }, (results, status) => {
+                if (status === google.maps.GeocoderStatus.OK && results && results[0]?.geometry?.location) {
+                  setCoordinates({
+                    lat: results[0].geometry.location.lat(),
+                    lng: results[0].geometry.location.lng()
+                  });
+                }
+              });
+            };
+          } else {
+            const geocoder = new google.maps.Geocoder();
+            geocoder.geocode({ address: data.address }, (results, status) => {
+              if (status === google.maps.GeocoderStatus.OK && results && results[0]?.geometry?.location) {
+                setCoordinates({
+                  lat: results[0].geometry.location.lat(),
+                  lng: results[0].geometry.location.lng()
+                });
+              }
+            });
+          }
+        } catch (error) {
+          console.warn('Geocoding failed:', error);
+        }
+      };
+
+      geocodeForMap();
+    }
+  }, [data, coordinates, latParam, lngParam]);
+
+  const handleSaveHome = async () => {
+    if (!data) return
+
+    setSavingHome(true)
+    try {
+      const response = await fetch('/api/homes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          postcode: data.postcode,
+          address: data.address,
+          lmk_key: null, // Could be extracted from EPC data if available
+          current_rating: data.currentRating,
+          potential_rating: data.potentialRating,
+          current_efficiency: data.currentEfficiency,
+          potential_efficiency: null, // Could be calculated
+          annual_energy_cost: data.livePricing?.currentAnnualCost || data.currentCost,
+          solar_potential_kwh: data.solar?.annualGeneration_kWh || null,
+          score_data: data
+        })
+      })
+
+      if (response.ok) {
+        // Redirect to dashboard
+        window.location.href = '/dashboard'
+      } else {
+        const error = await response.json()
+        alert(error.error || 'Failed to save home')
+      }
+    } catch (error) {
+      console.error('Failed to save home:', error)
+      alert('Failed to save home. Please try again.')
+    } finally {
+      setSavingHome(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -173,7 +275,17 @@ export default function ScoreResults() {
 
   if (!data) return null;
 
+  const ogImageUrl = `/api/og?address=${encodeURIComponent(data.address)}&score=${data.currentRating}&rating_label=${data.potentialRating}&energy_cost=Save £${data.livePricing?.liveSavings || data.annualSavings}/year&solar_potential=${data.solar?.annualGeneration_kWh || 0} kWh`;
+
   return (
+    <>
+      <Head>
+        <meta property="og:title" content={`My Home Energy Score: ${data.currentRating} → ${data.potentialRating}`} />
+        <meta property="og:description" content={`Address: ${data.address}. Save £${data.livePricing?.liveSavings || data.annualSavings}/year with improvements.`} />
+        <meta property="og:image" content={ogImageUrl} />
+        <meta property="og:url" content={typeof window !== 'undefined' ? window.location.href : ''} />
+        <meta name="twitter:card" content="summary_large_image" />
+      </Head>
     <main className="flex flex-col items-center min-h-screen px-4 pt-8 pb-16 bg-[#08080d] text-white">
       {/* Header */}
       <div className="text-center mb-8">
@@ -314,6 +426,23 @@ export default function ScoreResults() {
         </CardContent>
       </Card>
 
+      {/* Satellite Map */}
+      {coordinates && (
+        <Card className="bg-[#1c1c28] border-gray-700 w-full max-w-lg mb-6">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg text-[#4ecdc4]">🛰️ Satellite View</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <SatelliteMap
+              lat={coordinates.lat}
+              lng={coordinates.lng}
+              apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ""}
+              className="rounded-lg"
+            />
+          </CardContent>
+        </Card>
+      )}
+
       {/* Building Intelligence */}
       {data.buildingGeometry && (
         <Card className="bg-[#1c1c28] border-gray-700 w-full max-w-lg mb-6">
@@ -368,16 +497,22 @@ export default function ScoreResults() {
 
       {/* CTAs */}
       <div className="w-full max-w-lg space-y-3">
-        <Button className="w-full bg-[#4ecdc4] text-black hover:bg-[#4ecdc4]/90 h-12 text-lg font-semibold">
+        <Button
+          onClick={handleSaveHome}
+          disabled={savingHome}
+          className="w-full bg-[#4ecdc4] text-black hover:bg-[#4ecdc4]/90 h-12 text-lg font-semibold"
+        >
+          {savingHome ? 'Saving...' : '💾 Save to My Dashboard'}
+        </Button>
+        <Button className="w-full bg-gray-700 text-white hover:bg-gray-600 h-12 text-lg font-semibold">
           🔧 Get 3 Quotes from Local Contractors
         </Button>
-        <Button variant="outline" className="w-full h-12 border-gray-600 text-gray-300 hover:bg-gray-700">
-          📤 Share My Score
-        </Button>
+        <ShareDialog data={data} ogImageUrl={ogImageUrl} />
         <Link href="/" className="block">
           <Button variant="ghost" className="w-full text-gray-400 hover:text-white">← Check another home</Button>
         </Link>
       </div>
     </main>
+    </>
   );
 }

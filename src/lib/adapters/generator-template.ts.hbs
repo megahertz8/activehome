@@ -1,0 +1,170 @@
+// Template for generating country adapter from research data
+// This is a Handlebars-style template that gets processed with research output
+
+import {
+  CountryAdapter,
+  AddressResult,
+  EnergyData,
+  EnergyScore,
+  RatingBand,
+  EnergyPrices,
+  SolarResult,
+  Grant,
+  Recommendation
+} from './types';
+
+export class {{country_code}}Adapter implements CountryAdapter {
+  countryCode = '{{country_code}}';
+  countryName = '{{database.country_name}}';
+  currency = '{{energy_pricing.currency}}';
+  locale = '{{localization.primary_language}}-{{country_code}}';
+
+  async searchByPostcode(postcode: string): Promise<AddressResult[]> {
+    // TODO: Implement search using {{database.name}}
+    {{#if database.api}}
+    // Use API: {{database.api_url}}
+    {{/if}}
+    {{#if database.bulk_download}}
+    // Use local database from bulk download
+    {{/if}}
+    console.log(`{{country_name}} adapter: searchByPostcode ${postcode} - not implemented`);
+    return [];
+  }
+
+  async getCertificate(id: string): Promise<EnergyData | null> {
+    // TODO: Implement certificate lookup from {{database.name}}
+    {{#if database.api}}
+    // Fetch from: {{database.api_url}}
+    {{/if}}
+    console.log(`{{country_name}} adapter: getCertificate ${id} - not implemented`);
+    return null;
+  }
+
+  calculateEnergyScore(data: EnergyData): EnergyScore {
+    // {{rating_system.calculation_method}}
+    const ratingScale = this.getRatingScale();
+    const currentRating = data.currentEnergyRating;
+    const potentialRating = data.potentialEnergyRating;
+
+    // Map ratings to efficiency scores (0-100)
+    const ratingToEfficiency = (rating: string): number => {
+      const band = ratingScale.find(b => b.letter === rating);
+      return band ? (band.min + band.max) / 2 : 50; // Midpoint of band
+    };
+
+    const currentEfficiency = ratingToEfficiency(currentRating);
+    const potentialEfficiency = ratingToEfficiency(potentialRating);
+
+    // Estimate savings based on consumption data
+    const annualConsumption = data.floorArea ? (data.floorArea * 100) : 12000; // Estimate {{energy_units}}
+    const improvement = (potentialEfficiency - currentEfficiency) / 100;
+    const annualSavings = annualConsumption * improvement * 0.1; // Rough estimate
+
+    return {
+      current: currentEfficiency,
+      potential: potentialEfficiency,
+      savings: {
+        annual: annualSavings,
+        twentyYear: annualSavings * 20
+      }
+    };
+  }
+
+  getRatingScale(): RatingBand[] {
+    return [
+      {{#each rating_system.scale}}
+      { letter: '{{this}}', min: {{lookup ../rating_system.thresholds this 0}}, max: {{lookup ../rating_system.thresholds this 1}}, color: '{{lookup ../rating_system.colors this}}', description: '{{lookup ../rating_system.descriptions this}}' },
+      {{/each}}
+    ];
+  }
+
+  async getEnergyPrices(region?: string): Promise<EnergyPrices> {
+    // {{#if energy_pricing.pricing_api}}Use API: {{energy_pricing.pricing_api}}{{/if}}
+    return {
+      region: region || '{{country_name}}',
+      electricityRate_p: {{energy_pricing.average_residential_electricity}} * 100, // Convert to pence/cents
+      gasRate_p: {{energy_pricing.average_residential_gas}} * 100,
+      currentAnnualCost: 0, // TODO: Calculate based on consumption
+      potentialAnnualCost: 0,
+      liveSavings: 0
+    };
+  }
+
+  async getSolarPotential(lat: number, lon: number, roofArea: number): Promise<SolarResult> {
+    // Use PVGIS API (works globally)
+    const { estimateSolarPotential } = await import('../solar');
+    const result = await estimateSolarPotential({ lat, lon, roofArea_m2: roofArea });
+    return result || {
+      annualGeneration_kWh: 0,
+      monthlyGeneration_kWh: [],
+      peakPower_kWp: 0,
+      annualSavings_GBP: 0, // TODO: Convert to {{energy_pricing.currency}}
+      co2Saved_kg: 0
+    };
+  }
+
+  async getAvailableGrants(data: EnergyData): Promise<Grant[]> {
+    const grants: Grant[] = [];
+    {{#each grants}}
+    {{#if eligibility}}
+    if ({{eligibility}}) {
+    {{/if}}
+      grants.push({
+        scheme: '{{name}}',
+        amount: '{{amount}}',
+        description: '{{description}}'
+      });
+    {{#if eligibility}}
+    }
+    {{/if}}
+    {{/each}}
+    return grants;
+  }
+
+  getRecommendations(data: EnergyData): Recommendation[] {
+    const recommendations: Recommendation[] = [];
+
+    // Based on {{database.name}} data and typical improvements
+    {{#each buildings.construction_eras}}
+    if (this.estimateBuildingAge(data) >= {{years}}) {
+      {{#each common_improvements}}
+      // Add recommendation for {{this}}
+      {{/each}}
+    }
+    {{/each}}
+
+    return recommendations;
+  }
+
+  getContractorSearchUrl(postcode: string, improvementType: string): string {
+    {{#each contractors}}
+    {{#if affiliate_program}}
+    // Use affiliate: {{url}}
+    return '{{url}}';
+    {{/if}}
+    {{/each}}
+    // Fallback to search
+    return `https://www.google.com/search?q=${encodeURIComponent(`${improvementType} contractor ${postcode} {{country_name}}`)}`;
+  }
+
+  validatePostcode(postcode: string): boolean {
+    const regex = {{postcode_format.format_regex}};
+    return regex.test(postcode.trim());
+  }
+
+  formatPostcode(postcode: string): string {
+    // {{postcode_format.format_description}}
+    return postcode.trim().toUpperCase();
+  }
+
+  private estimateBuildingAge(data: EnergyData): number {
+    // Estimate based on construction eras
+    {{#each buildings.construction_eras}}
+    if (data.wallsDescription?.toLowerCase().includes('{{period}}') ||
+        data.propertyType?.toLowerCase().includes('{{period}}')) {
+      return {{years}}; // Approximate year for {{period}}
+    }
+    {{/each}}
+    return 1980; // Default
+  }
+}

@@ -187,6 +187,14 @@ app.get('/api/pipeline', (req, res) => {
   status.shareCardMockups = '✅ Completed';
   // A/B test
   status.abTest = '✅ Live on landing page';
+  // EPC API adapter
+  status.epcApiAdapter = '✅ Built';
+  // Share cards
+  status.shareCards = '✅ Built';
+  // Referral system
+  status.referralSystem = '✅ Built (awaiting Resend)';
+  // FHS research
+  status.fhsResearch = '✅ Complete';
   res.json(status);
 });
 
@@ -202,28 +210,93 @@ app.get('/api/codebase', (req, res) => {
 });
 
 app.get('/api/checklist', (req, res) => {
-  const checklist = {
-    'Domain registered (evolvinghome.ai)': true,
-    'Next.js scaffolded': true,
-    '17.7M EPC records in SQLite': true,
-    'EPC API route handler': true,
-    'Landing page live': true,
-    'Waitlist on Supabase': true,
-    'Geo-adaptive content': true,
-    'OpenBEM integration': true,
-    'Octopus Energy integration': true,
-    'PVGIS/PVWatts integration': true,
-    'Wire integrations into score page': false,
-    'OSM Building Geometry integration': true,
-    'France DPE import': true,
-    'Netherlands EP-Online import': false,
-    'Share card component': true,
-    'A/B test on landing page': true,
-    'Supabase Auth (SSO)': false,
-    'Production DB solution': false,
-    'Deploy full app': false
-  };
-  res.json(checklist);
+  const phases = [
+    {
+      name: "Phase 1: Foundation",
+      tasks: [
+        { task: "Domain registered (evolvinghome.ai)", done: true },
+        { task: "Next.js 15 scaffolded", done: true },
+        { task: "17.7M EPC records in SQLite", done: true },
+        { task: "EPC API route handler", done: true },
+        { task: "Landing page live (Cloudflare Pages)", done: true },
+        { task: "Waitlist on Supabase", done: true },
+        { task: "Geo-adaptive content (UK/US/intl)", done: true },
+        { task: "A/B test on landing page", done: true },
+        { task: "OpenBEM/SAP energy calcs", done: true },
+        { task: "Octopus Energy integration", done: true },
+        { task: "PVGIS/PVWatts solar integration", done: true },
+        { task: "Score results page wired", done: true },
+        { task: "OSM Building Geometry", done: true },
+        { task: "Share card component + OG images", done: true },
+        { task: "Referral system", done: true },
+        { task: "EPC API adapter for production", done: true },
+        { task: "Resend domain verification", done: false },
+        { task: "Supabase Auth (SSO)", done: false },
+        { task: "Deploy full Next.js app to Vercel", done: false },
+        { task: "Social handles (@evolvinghome)", done: false }
+      ]
+    },
+    {
+      name: "Phase 2: Retrofit Marketplace",
+      tasks: [
+        { task: "Contractor directory", done: false },
+        { task: "Lead generation system (£100-300/lead)", done: false },
+        { task: "Grant matching engine", done: false },
+        { task: "Renovation compliance bridge (FHS/Part L)", done: false },
+        { task: "User profiles + saved homes", done: false },
+        { task: "Push notifications for engagement", done: false }
+      ]
+    },
+    {
+      name: "Phase 3: Expansion",
+      tasks: [
+        { task: "France DPE integration", done: false },
+        { task: "Netherlands EP-Online", done: false },
+        { task: "US RECS data", done: false },
+        { task: "Multi-country support", done: false },
+        { task: "Pro subscription tier", done: false },
+        { task: "Credit system (Energy Credits)", done: false }
+      ]
+    },
+    {
+      name: "Phase 4: Intelligence",
+      tasks: [
+        { task: "ML energy prediction models", done: false },
+        { task: "Digital energy twin", done: false },
+        { task: "B2B API", done: false },
+        { task: "257.co partnership", done: false },
+        { task: "Green mortgage referrals", done: false }
+      ]
+    },
+    {
+      name: "Phase 5: Scale",
+      tasks: [
+        { task: "Production database migration", done: false },
+        { task: "Mobile app (iOS LiDAR Pro)", done: false },
+        { task: "Data marketplace", done: false }
+      ]
+    }
+  ];
+
+  // Calculate status for each phase
+  phases.forEach(phase => {
+    const doneCount = phase.tasks.filter(t => t.done).length;
+    const total = phase.tasks.length;
+    if (doneCount === total) {
+      phase.status = 'complete';
+    } else if (doneCount > 0) {
+      phase.status = 'in-progress';
+    } else {
+      phase.status = 'not-started';
+    }
+    phase.progress = { completed: doneCount, total };
+  });
+
+  // Overall progress
+  const totalTasks = phases.reduce((sum, p) => sum + p.tasks.length, 0);
+  const completedTasks = phases.reduce((sum, p) => sum + p.tasks.filter(t => t.done).length, 0);
+
+  res.json({ phases, overallProgress: { completed: completedTasks, total: totalTasks } });
 });
 
 app.get('/api/building-intelligence', (req, res) => {

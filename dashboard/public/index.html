@@ -8,6 +8,13 @@
 </head>
 <body>
   <h1>Evolving Home Live Dashboard</h1>
+  <div id="overall-progress" class="overall-progress">
+    <h2>Overall Roadmap Progress</h2>
+    <div class="progress-bar">
+      <div class="progress-fill" id="progress-fill"></div>
+    </div>
+    <span id="progress-text"></span>
+  </div>
   <div class="grid">
     <div class="card" id="overview">
       <h2>Project Overview</h2>
@@ -34,7 +41,7 @@
       <div id="codebase-content">Loading...</div>
     </div>
     <div class="card" id="checklist">
-      <h2>Phase 1 Checklist</h2>
+      <h2>Roadmap Phases</h2>
       <div id="checklist-content">Loading...</div>
     </div>
     <div class="card" id="building-intelligence">
@@ -50,33 +57,39 @@
         let html = '';
         if (id === 'overview') {
           html = `
-            <p>EPC Records: ${data.epcRecords}</p>
-            <p>Waitlist Signups: ${data.waitlistSignups.total} (Recent: ${data.waitlistSignups.recent.length})</p>
-            <p>Research Docs: ${data.researchDocs}</p>
-            <p>Domain Status: ${data.domainStatus}</p>
-            <p>Git Status: <pre>${data.gitStatus.join('\n')}</pre></p>
+            <ul>
+              <li>EPC Records: ${data.epcRecords}</li>
+              <li>Waitlist Signups: ${data.waitlistSignups.total} (Recent: ${data.waitlistSignups.recent.length})</li>
+              <li>Research Docs: ${data.researchDocs}</li>
+              <li>Domain Status: ${data.domainStatus}</li>
+              <li>Git Status: <pre>${data.gitStatus.join('\n')}</pre></li>
+            </ul>
           `;
         } else if (id === 'health') {
-          html = Object.entries(data).map(([k, v]) => `<p>${k}: ${v}</p>`).join('');
+          html = `<ul>${Object.entries(data).map(([k, v]) => `<li>${k}: ${v}</li>`).join('')}</ul>`;
         } else if (id === 'waitlist') {
           if (data.error) {
             html = `<p>${data.error}</p>`;
           } else {
             html = `
-              <p>Total: ${data.total}</p>
-              <p>By Country: ${JSON.stringify(data.byCountry)}</p>
-              <p>Recent: <ul>${data.recent.map(r => `<li>${r.email} (${r.country}) - ${new Date(r.created_at).toLocaleDateString()}</li>`).join('')}</ul></p>
-              <p>Daily Trend: ${JSON.stringify(data.dailyTrend)}</p>
+              <ul>
+                <li>Total: ${data.total}</li>
+                <li>By Country: ${JSON.stringify(data.byCountry)}</li>
+                <li>Recent: <ul>${data.recent.map(r => `<li>${r.email} (${r.country}) - ${new Date(r.created_at).toLocaleDateString()}</li>`).join('')}</ul></li>
+                <li>Daily Trend: ${JSON.stringify(data.dailyTrend)}</li>
+              </ul>
             `;
           }
         } else if (id === 'epc-stats') {
           html = `
-            <p>Total Records: ${data.total}</p>
-            <p>By Rating: ${Object.entries(data.byRating).map(([r, c]) => `${r}: ${c}`).join(', ')}</p>
-            <p>Top Regions: <ul>${data.byRegion.map(r => `<li>${r.local_authority}: ${r.count}</li>`).join('')}</ul></p>
+            <ul>
+              <li>Total Records: ${data.total}</li>
+              <li>By Rating: ${Object.entries(data.byRating).map(([r, c]) => `${r}: ${c}`).join(', ')}</li>
+              <li>Top Regions: <ul>${data.byRegion.map(r => `<li>${r.local_authority}: ${r.count}</li>`).join('')}</ul></li>
+            </ul>
           `;
         } else if (id === 'pipeline') {
-          html = Object.entries(data).map(([k, v]) => `<p>${k}: ${v}</p>`).join('');
+          html = `<ul>${Object.entries(data).map(([k, v]) => `<li>${k}: ${v}</li>`).join('')}</ul>`;
         } else if (id === 'codebase') {
           html = `
             <p>Files: ${data.files}</p>
@@ -84,7 +97,31 @@
             <p>Last Modified: <ul>${data.lastModified.map(f => `<li>${f}</li>`).join('')}</ul></p>
           `;
         } else if (id === 'checklist') {
-          html = Object.entries(data).map(([task, done]) => `<p>${done ? '✅' : '❌'} ${task}</p>`).join('');
+          const { phases, overallProgress } = data;
+          // Set overall progress
+          const percentage = Math.round((overallProgress.completed / overallProgress.total) * 100);
+          document.getElementById('progress-fill').style.width = `${percentage}%`;
+          document.getElementById('progress-text').textContent = `${overallProgress.completed}/${overallProgress.total} tasks completed (${percentage}%)`;
+          // Render phases
+          html = phases.map(phase => {
+            const statusIcon = phase.status === 'complete' ? '🟢' : phase.status === 'in-progress' ? '🟡' : '🔴';
+            const percentage = Math.round((phase.progress.completed / phase.progress.total) * 100);
+            return `
+              <div class="phase-card" onclick="togglePhase(this)">
+                <div class="phase-header">
+                  <h3>${phase.name}</h3>
+                  <span class="status">${statusIcon} ${phase.status.replace('-', ' ')}</span>
+                  <div class="progress-bar small">
+                    <div class="progress-fill" style="width: ${percentage}%"></div>
+                  </div>
+                  <span class="progress-text">${phase.progress.completed}/${phase.progress.total}</span>
+                </div>
+                <div class="phase-details">
+                  ${phase.tasks.map(task => `<p>${task.done ? '✅' : '❌'} ${task.task}</p>`).join('')}
+                </div>
+              </div>
+            `;
+          }).join('');
         } else if (id === 'building-intelligence') {
           html = `
             <p>Status: ${data.osmBuildingGeometry}</p>
@@ -107,6 +144,11 @@
       updateSection('codebase', '/api/codebase');
       updateSection('checklist', '/api/checklist');
       updateSection('building-intelligence', '/api/building-intelligence');
+    }
+
+    function togglePhase(element) {
+      const details = element.querySelector('.phase-details');
+      details.classList.toggle('open');
     }
 
     updateAll();
