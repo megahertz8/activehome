@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Evolving Home Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h1>Evolving Home Live Dashboard</h1>
+  <div class="grid">
+    <div class="card" id="overview">
+      <h2>Project Overview</h2>
+      <div id="overview-content">Loading...</div>
+    </div>
+    <div class="card" id="health">
+      <h2>Integration Health</h2>
+      <div id="health-content">Loading...</div>
+    </div>
+    <div class="card" id="waitlist">
+      <h2>Waitlist Details</h2>
+      <div id="waitlist-content">Loading...</div>
+    </div>
+    <div class="card" id="epc-stats">
+      <h2>EPC Database Stats</h2>
+      <div id="epc-stats-content">Loading...</div>
+    </div>
+    <div class="card" id="pipeline">
+      <h2>Data Pipeline Status</h2>
+      <div id="pipeline-content">Loading...</div>
+    </div>
+    <div class="card" id="codebase">
+      <h2>Codebase Stats</h2>
+      <div id="codebase-content">Loading...</div>
+    </div>
+    <div class="card" id="checklist">
+      <h2>Phase 1 Checklist</h2>
+      <div id="checklist-content">Loading...</div>
+    </div>
+    <div class="card" id="building-intelligence">
+      <h2>Building Intelligence</h2>
+      <div id="building-intelligence-content">Loading...</div>
+    </div>
+  </div>
+  <script>
+    async function updateSection(id, url) {
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+        let html = '';
+        if (id === 'overview') {
+          html = `
+            <p>EPC Records: ${data.epcRecords}</p>
+            <p>Waitlist Signups: ${data.waitlistSignups.total} (Recent: ${data.waitlistSignups.recent.length})</p>
+            <p>Research Docs: ${data.researchDocs}</p>
+            <p>Domain Status: ${data.domainStatus}</p>
+            <p>Git Status: <pre>${data.gitStatus.join('\n')}</pre></p>
+          `;
+        } else if (id === 'health') {
+          html = Object.entries(data).map(([k, v]) => `<p>${k}: ${v}</p>`).join('');
+        } else if (id === 'waitlist') {
+          if (data.error) {
+            html = `<p>${data.error}</p>`;
+          } else {
+            html = `
+              <p>Total: ${data.total}</p>
+              <p>By Country: ${JSON.stringify(data.byCountry)}</p>
+              <p>Recent: <ul>${data.recent.map(r => `<li>${r.email} (${r.country}) - ${new Date(r.created_at).toLocaleDateString()}</li>`).join('')}</ul></p>
+              <p>Daily Trend: ${JSON.stringify(data.dailyTrend)}</p>
+            `;
+          }
+        } else if (id === 'epc-stats') {
+          html = `
+            <p>Total Records: ${data.total}</p>
+            <p>By Rating: ${Object.entries(data.byRating).map(([r, c]) => `${r}: ${c}`).join(', ')}</p>
+            <p>Top Regions: <ul>${data.byRegion.map(r => `<li>${r.local_authority}: ${r.count}</li>`).join('')}</ul></p>
+          `;
+        } else if (id === 'pipeline') {
+          html = Object.entries(data).map(([k, v]) => `<p>${k}: ${v}</p>`).join('');
+        } else if (id === 'codebase') {
+          html = `
+            <p>Files: ${data.files}</p>
+            <p>Lines: ${data.lines}</p>
+            <p>Last Modified: <ul>${data.lastModified.map(f => `<li>${f}</li>`).join('')}</ul></p>
+          `;
+        } else if (id === 'checklist') {
+          html = Object.entries(data).map(([task, done]) => `<p>${done ? '✅' : '❌'} ${task}</p>`).join('');
+        } else if (id === 'building-intelligence') {
+          html = `
+            <p>Status: ${data.osmBuildingGeometry}</p>
+            <p>${data.description}</p>
+            <ul>${data.features.map(f => `<li>${f}</li>`).join('')}</ul>
+          `;
+        }
+        document.getElementById(`${id}-content`).innerHTML = html;
+      } catch (e) {
+        document.getElementById(`${id}-content`).innerHTML = `<p>Error: ${e.message}</p>`;
+      }
+    }
+
+    function updateAll() {
+      updateSection('overview', '/api/overview');
+      updateSection('health', '/api/health');
+      updateSection('waitlist', '/api/waitlist');
+      updateSection('epc-stats', '/api/epc-stats');
+      updateSection('pipeline', '/api/pipeline');
+      updateSection('codebase', '/api/codebase');
+      updateSection('checklist', '/api/checklist');
+      updateSection('building-intelligence', '/api/building-intelligence');
+    }
+
+    updateAll();
+    setInterval(updateAll, 30000);
+  </script>
+</body>
+</html>
