@@ -1,10 +1,17 @@
 import { resolve } from "path";
+import { existsSync } from "fs";
 
 const DB_PATH = resolve(process.cwd(), "data/epc.db");
+
+// Check if local DB is available (won't exist on Vercel/serverless)
+const DB_AVAILABLE = existsSync(DB_PATH);
 
 let db: import("better-sqlite3").Database | null = null;
 
 function getDb(): import("better-sqlite3").Database {
+  if (!DB_AVAILABLE) {
+    throw new Error("Local EPC database not available (serverless environment)");
+  }
   if (!db) {
     // Dynamic require to avoid loading native module during compilation
     // eslint-disable-next-line @typescript-eslint/no-require-imports
