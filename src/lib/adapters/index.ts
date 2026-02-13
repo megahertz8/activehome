@@ -1,6 +1,7 @@
 import { CountryAdapter, CountryInfo } from './types';
 import { UKAdapter } from './gb';
 import { FranceAdapter } from './fr';
+import { NetherlandsAdapter } from './nl';
 import { LiteAdapter } from './lite';
 
 // Adapter registry
@@ -9,6 +10,7 @@ const adapters = new Map<string, CountryAdapter>();
 // Initialize adapters
 adapters.set('GB', new UKAdapter());
 adapters.set('FR', new FranceAdapter());
+adapters.set('NL', new NetherlandsAdapter());
 
 export function getAdapter(countryCode: string): CountryAdapter {
   const adapter = adapters.get(countryCode.toUpperCase());
@@ -30,6 +32,11 @@ export function detectCountry(postcode: string, request?: Request): string {
   // French postcode (5 digits)
   if (/^\d{5}$/.test(cleaned)) {
     return 'FR';
+  }
+
+  // Dutch postcode (4 digits + 2 letters)
+  if (/^\d{4}[A-Z]{2}$/i.test(cleaned)) {
+    return 'NL';
   }
 
   // Try to detect from request headers (geo-IP)
