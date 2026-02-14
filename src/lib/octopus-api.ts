@@ -1,4 +1,4 @@
-import { supabase } from './supabase-server';
+import { supabase } from './supabase-client';
 
 const BASE_URL = 'https://api.octopus.energy/v1';
 
@@ -97,7 +97,7 @@ export async function getTariffRates(
   rateType: 'standard-unit-rates' | 'standing-charges' | 'export-tariffs' = 'standard-unit-rates'
 ): Promise<TariffRate[]> {
   // Check cache first
-  const cached = await getCachedTariff(postcode, productCode, tariffCode, 'electricity', rateType);
+  let cached = await getCachedTariff(postcode, productCode, tariffCode, 'electricity', rateType);
   if (cached) {
     return cached.data as TariffRate[];
   }
@@ -119,6 +119,10 @@ export async function getTariffRates(
   } catch (error) {
     console.error('Error fetching tariff rates:', error);
     // Try to return cached data even if expired as fallback
+    if (!cached) {
+      // Try expired cache as fallback
+      cached = await getCachedTariffExpired(postcode, productCode, tariffCode, 'electricity', rateType);
+    }
     if (cached) {
       return cached.data as TariffRate[];
     }
@@ -199,7 +203,33 @@ async function getCachedTariff(
     return null;
   }
 
-  return data;
+  return data as CachedTariff;
+}
+
+async function getCachedTariffExpired(
+  postcode: string,
+  productCode: string,
+  tariffCode: string,
+  tariffType: string,
+  rateType: string
+): Promise<CachedTariff | null> {
+  const { data, error } = await supabase
+    .from('octopus_tariffs')
+    .select('*')
+    .eq('postcode', postcode)
+    .eq('product_code', productCode)
+    .eq('tariff_code', tariffCode)
+    .eq('tariff_type', tariffType)
+    .eq('rate_type', rateType)
+    .order('fetched_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  if (error || !data) {
+    return null;
+  }
+
+  return data as CachedTariff;
 }
 
 async function cacheTariffData(
