@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { calculatePayback, SystemType, PaybackData } from '@/lib/roi-mock';
+import { calculatePayback, SystemType, PaybackData } from '@/lib/roi-calculator';
 
 declare global {
   interface Window {
@@ -21,6 +21,7 @@ export default function ROICalculator() {
   const [postcode, setPostcode] = useState('');
   const [systemType, setSystemType] = useState<SystemType | null>(null);
   const [paybackData, setPaybackData] = useState<PaybackData | null>(null);
+  const [loading, setLoading] = useState(false);
   const [premiumInterest, setPremiumInterest] = useState(false);
 
   useEffect(() => {
@@ -28,23 +29,34 @@ export default function ROICalculator() {
   }, []);
 
   const handlePostcodeSubmit = () => {
-    if (postcode.length === 4 && /^\d+$/.test(postcode)) {
+    // UK postcode validation - accept partial postcodes
+    if (postcode.length >= 3 && postcode.length <= 8) {
       trackEvent('roi_postcode_entered', { postcode });
       setStep(2);
     }
   };
 
-  const handleSystemSelect = (type: SystemType) => {
+  const handleSystemSelect = async (type: SystemType) => {
     setSystemType(type);
+    setLoading(true);
     trackEvent('roi_system_selected', { system_type: type });
-    const data = calculatePayback(postcode, type);
-    setPaybackData(data);
-    trackEvent('roi_calculated', {
-      system_type: type,
-      payback_years: data.paybackYears,
-      annual_savings: data.annualSavings,
-    });
-    setStep(3);
+
+    try {
+      const data = await calculatePayback(postcode, type);
+      setPaybackData(data);
+      trackEvent('roi_calculated', {
+        system_type: type,
+        payback_years: data.paybackYears,
+        annual_savings: data.annualSavings,
+      });
+      setStep(3);
+    } catch (error) {
+      console.error('Error calculating payback:', error);
+      // Could show error message to user
+      alert('Failed to calculate payback. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handlePremiumInterest = async () => {
@@ -77,18 +89,18 @@ export default function ROICalculator() {
 
         {step === 1 && (
           <div>
-            <p className="mb-4">Enter your Australian postcode to get started:</p>
+            <p className="mb-4">Enter your UK postcode to get started:</p>
             <input
               type="text"
               value={postcode}
-              onChange={(e) => setPostcode(e.target.value)}
-              placeholder="e.g. 2000"
+              onChange={(e) => setPostcode(e.target.value.toUpperCase())}
+              placeholder="e.g. SW1A 1AA or SW1A"
               className="w-full p-2 border rounded mb-4"
-              maxLength={4}
+              maxLength={8}
             />
             <button
               onClick={handlePostcodeSubmit}
-              disabled={!/^\d{4}$/.test(postcode)}
+              disabled={postcode.length < 3 || postcode.length > 8}
               className="w-full bg-blue-500 text-white p-2 rounded disabled:opacity-50"
             >
               Next
@@ -102,15 +114,17 @@ export default function ROICalculator() {
             <div className="space-y-2">
               <button
                 onClick={() => handleSystemSelect('solar')}
-                className="w-full bg-green-500 text-white p-2 rounded"
+                disabled={loading}
+                className="w-full bg-green-500 text-white p-2 rounded disabled:opacity-50"
               >
-                Solar Panels
+                {loading ? 'Calculating...' : 'Solar Panels'}
               </button>
               <button
                 onClick={() => handleSystemSelect('hp')}
-                className="w-full bg-blue-500 text-white p-2 rounded"
+                disabled={loading}
+                className="w-full bg-blue-500 text-white p-2 rounded disabled:opacity-50"
               >
-                Heat Pump
+                {loading ? 'Calculating...' : 'Heat Pump'}
               </button>
             </div>
           </div>
@@ -122,8 +136,23 @@ export default function ROICalculator() {
             <p>System: {systemType === 'solar' ? 'Solar Panels' : 'Heat Pump'}</p>
             <p>Postcode: {postcode}</p>
             <p>Payback Period: {paybackData.paybackYears} years</p>
-            <p>Annual Savings: ${paybackData.annualSavings}</p>
-            <p>Initial Cost: ${paybackData.initialCost}</p>
+            <p>Annual Savings: £{paybackData.annualSavings.toLocaleString()}</p>
+            <p>Initial Cost: £{paybackData.initialCost.toLocaleString()}</p>
+
+            {paybackData.currentTariff && paybackData.optimalTariff && (
+              <div className="mt-4 p-4 bg-blue-50 rounded">
+                <h3 className="font-semibold mb-2">Tariff Comparison</h3>
+                <p><strong>Current Tariff:</strong> {paybackData.currentTariff}</p>
+                <p><strong>Recommended Tariff:</strong> {paybackData.optimalTariff}</p>
+                {paybackData.annualSavingsFromSwitch && (
+                  <p><strong>Annual Savings from Switch:</strong> £{paybackData.annualSavingsFromSwitch.toLocaleString()}</p>
+                )}
+                {paybackData.switchRecommendation && (
+                  <p className="mt-2 text-sm text-blue-700">{paybackData.switchRecommendation}</p>
+                )}
+              </div>
+            )}
+
             <div className="mt-4 space-y-2">
               <button
                 onClick={handlePremiumInterest}
