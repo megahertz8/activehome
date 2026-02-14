@@ -38,7 +38,7 @@ next-env.d.ts
 .env.local
 
 # Local EPC database (7.4GB)
-data/
+/data/
 
 # Supabase
 supabase/.temp/
