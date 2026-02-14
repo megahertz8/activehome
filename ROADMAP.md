@@ -53,6 +53,30 @@
 - 🔄 User dashboard with renovation tracking
 - 🔄 Offline mode for EPC data
 
+## Phase 2.5: Data Integration Sprint (Feb 2026) ✅
+**Status**: In Progress
+
+### Completed (Feb 14, 2026)
+- ✅ **28 Data Sources Identified**: Research/academic, government, industry, open datasets catalogued in quality-data-sources.md
+- ✅ **Cross-Reference Analysis**: Mapped new sources against existing research (15 net new sources, 40% new knowledge)
+- ✅ **TABULA/EPISCOPE Integration**: Downloaded building typologies for 20+ EU countries (critical for modeling without individual building data)
+- ✅ **Energy Score Engine**: 0-100 scale spec'd with component scoring (insulation, heating, solar, water, envelope)
+- ✅ **Video Discovery Pipeline**: Processed 406/421 Passivhaus/retrofit videos with insights extraction
+- ✅ **Leagues System**: Code complete (Foundation → Vanguard tiers based on Energy Score + action completion)
+
+### Data Sources by Category
+**Research/Academic**: Passivhaus Institute, IEA, BRE Trust, AECB, CSIRO, LBNL  
+**Government**: DOE US, EU Building Stock Observatory, UK DESNZ, EPC API, NatHERS AU, ADEME FR, RVO NL  
+**Industry**: NREL, Energy Saving Trust, MCS Installer Data, Fraunhofer ISE  
+**Open Datasets**: OpenEPC, TABULA/EPISCOPE (EU building typologies)  
+**Standards**: SAP/RdSAP methodology docs, NatHERS protocols  
+
+### Next Integration Phase
+- 🔄 EU/US adapter builds (TABULA typology integration, ResStock for US)
+- 🔄 Energy Score engine implementation (backend + UI)
+- 🔄 Discovery pipeline deployment (video → data source ingestion)
+- 🔄 Regional landing pages (FR, NL live; US in dev)
+
 ## Phase 3: Scale (2026)
 **Theme**: Monetization & Enterprise
 

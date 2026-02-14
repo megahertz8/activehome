@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Evolving Home - Project Mind Map</title>
+  <script src="https://cdn.jsdelivr.net/npm/markmap-autoloader@0.16"></script>
+  <style>
+    body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; }
+    #mindmap { width: 100vw; height: 100vh; }
+    .info { position: absolute; top: 10px; left: 10px; background: rgba(255,255,255,0.9); padding: 15px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 300px; z-index: 1000; }
+    .info h3 { margin: 0 0 10px 0; font-size: 16px; }
+    .info p { margin: 5px 0; font-size: 13px; color: #666; }
+  </style>
+</head>
+<body>
+  <div class="info">
+    <h3>🏡 Evolving Home Project Map</h3>
+    <p><strong>Last Updated:</strong> Feb 14, 2026</p>
+    <p><strong>Sprint Focus:</strong> Data Integration</p>
+    <p>Zoom: Scroll | Pan: Drag | Click nodes to collapse/expand</p>
+  </div>
+  <div id="mindmap">
+    <script type="text/template">
+# Evolving Home
+
+## 🎯 Vision
+- Privacy-first home energy evolution platform
+- Multi-country support (UK, FR, NL, AU, US)
+- AI-powered retrofit recommendations
+- Gamification via Leagues system
+
+## 📊 Data Sources (28 Total - Feb 14)
+### Research/Academic
+- Passivhaus Institute (ultra-efficiency benchmarks)
+- IEA Reports (global building efficiency)
+- BRE Trust (UK sustainable building research)
+- LBNL (US EnergyPlus modeling)
+- AECB (UK low-energy building)
+- CSIRO (AU NatHERS administration)
+
+### Government/Regulatory
+- DOE US (Building America, HERS)
+- EU Building Stock Observatory ⭐ NEW
+- UK DESNZ (NEED framework)
+- EPC Register API (UK - live)
+- NatHERS AU (ahd.csiro.au)
+- ADEME FR (10M DPE records imported)
+- RVO NL (EP-Online API)
+
+### Industry Data
+- NREL (OpenStudio, ResStock) ⭐ NEW
+- Energy Saving Trust (UK retrofit data)
+- MCS Installer Data (UK installers/tech)
+- Fraunhofer ISE (German renewable research)
+
+### Open Datasets
+- OpenEPC (pan-EU EPC data) ⭐ NEW
+- TABULA/EPISCOPE (EU building typologies - 20+ countries) ⭐ CRITICAL
+
+### Technical Standards
+- SAP/RdSAP (UK methodology specs - downloaded)
+- NatHERS Protocols (AU rating protocols)
+
+## 🏗️ Architecture
+### Frontend
+- Next.js 14 (App Router)
+- Tailwind CSS + shadcn/ui
+- TypeScript
+- Responsive design
+
+### Backend
+- Supabase (auth + PostgreSQL)
+- Cloudflare Workers (edge compute)
+- Local SQLite (EPC caching)
+
+### Data Adapters (Regional)
+- 🟢 UK: EPC API live (production)
+- 🟢 FR: DPE adapter (10M rows imported)
+- 🟢 NL: EP-Online adapter ready
+- 🟡 AU: NatHERS (Phase 1 spec'd)
+- 🟡 US: HERS + ResStock (in dev)
+- 🟡 EU: TABULA typologies (integration next)
+
+## 🎮 Energy Score Engine (0-100)
+### Components
+- Insulation Score (walls, roof, floor)
+- Heating System Efficiency
+- Solar Potential (PVGIS integration)
+- Water Heating
+- Building Envelope (air tightness)
+
+### Calculation Methodology
+- Weighted components
+- Region-specific benchmarks
+- Normalization to 0-100 scale
+- Dynamic thresholds per country
+
+## 🏆 Leagues System (Gamification)
+### Tiers (Based on Energy Score + Actions)
+- 🌱 Foundation (0-30) - Getting started
+- ⚡ Awakening (31-50) - Basic improvements
+- 🔥 Momentum (51-70) - Major upgrades
+- 🌟 Pioneer (71-85) - High performance
+- 🦅 Vanguard (86-100) - Ultra-efficient
+
+### Progression Mechanics
+- Score milestones unlock next tier
+- Action tracking (surveys, retrofits completed)
+- Badge system
+- Social sharing
+
+## 🔍 Discovery Pipeline (Video → Insights)
+### Status
+- 406/421 videos processed
+- Sources: Passivhaus, retrofits, energy standards
+- Models: Grok r3-new (review), Sonnet (full analysis)
+
+### Outputs
+- insights.jsonl (structured learnings)
+- summary_report.md (key findings)
+- research/video-review-*.md (detailed analysis)
+
+### Next Phase
+- Automated ingestion from data sources
+- Cross-reference with existing research
+- Knowledge graph construction
+
+## 🌍 Regional Expansion
+### Phase 0: Research (✅ Complete)
+- UK, FR, NL, AU, US markets analyzed
+- Affiliate ecosystems mapped
+- Data sources identified
+
+### Phase 1: Adapter Build (🔄 In Progress)
+- FR landing page (ready for deploy)
+- NL landing page (adapter ready)
+- US adapter (highest revenue ceiling - in dev)
+
+### Phase 2: Go-To-Market
+- Localized content
+- Regional partnerships
+- Contractor networks
+- Compliance (GDPR, local regs)
+
+## 🛠️ Technical Debt
+### High Priority
+- Git divergence (14 vs 11 commits) - needs resolution
+- Vercel deploy token (merge blocked)
+- Resend domain verification (unknown status)
+- Waitlist email flow (SUPABASE_SERVICE_ROLE_KEY missing in Pages Preview)
+
+### Medium Priority
+- GCP Maps API key (Eran hasn't added)
+- Social handles setup
+- searchParams await fix (partial, contractors page warning)
+
+### Low Priority
+- Test coverage (aim for 80%+)
+- Documentation updates
+
+## 📅 Next Sprint (Feb 15, 8AM)
+1. Deploy FR landing page (40% organic traffic opportunity)
+2. Deploy NL landing page
+3. Begin US adapter build
+4. Resolve git divergence + push to Vercel
+5. Check Resend domain verification
+6. Regenerate mind map post-video-digest
+
+## 🎓 Lessons Learned (Feb 14)
+### Data Pipeline
+- 54% of "quality data sources" were net new to our research
+- TABULA/EPISCOPE is critical gap - enables EU-wide modeling
+- Cross-reference methodology prevents duplicate work
+
+### Agent Operations
+- Sub-agent health checks mandatory after every spawn
+- Grok fabrication incident: Always verify model claims
+- Transcript review catches hallucinations early
+
+### Technical
+- Input sanitization policy now mandatory (reference: waitlist-api/app.py)
+- Kanban swarm skill: universal flow (research/specs→code→sec→QA→docs)
+    </script>
+  </div>
+</body>
+</html>

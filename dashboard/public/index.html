@@ -48,6 +48,24 @@
       <h2>Building Intelligence</h2>
       <div id="building-intelligence-content">Loading...</div>
     </div>
+    <div class="card" id="data-integration">
+      <h2>Data Integration Sprint (Feb 14)</h2>
+      <div id="data-integration-content">
+        <p><strong>Status:</strong> ✅ Research Complete | 🔄 Implementation In Progress</p>
+        <p><strong>Data Sources:</strong> 28 catalogued (15 net new, 13 known)</p>
+        <ul>
+          <li>✅ TABULA/EPISCOPE: EU building typologies downloaded (20+ countries)</li>
+          <li>✅ EU Building Stock Observatory: Factsheets + Excel data</li>
+          <li>✅ SAP/RdSAP: UK methodology specs (10.2, RdSAP10)</li>
+          <li>✅ ResStock: US building stock data (NREL)</li>
+          <li>🔄 EU Adapter: TABULA integration (next sprint)</li>
+          <li>🔄 US Adapter: ResStock + HERS integration (next sprint)</li>
+        </ul>
+        <p><strong>Energy Score Engine:</strong> 0-100 scale spec'd (insulation, heating, solar, water, envelope)</p>
+        <p><strong>Leagues:</strong> Foundation → Vanguard tiers (code complete)</p>
+        <p><strong>Discovery Pipeline:</strong> 406/421 videos processed, insights extracted</p>
+      </div>
+    </div>
   </div>
   <script>
     async function updateSection(id, url) {
@@ -144,6 +162,7 @@
       updateSection('codebase', '/api/codebase');
       updateSection('checklist', '/api/checklist');
       updateSection('building-intelligence', '/api/building-intelligence');
+      // Data integration is static for now, no API call needed
     }
 
     function togglePhase(element) {
