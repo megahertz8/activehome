@@ -77,36 +77,14 @@
   </section>
 
   <section class="waitlist">
-    <h2>Bientôt disponible en France</h2>
-    <p>Inscrivez-vous pour être parmi les premiers à tester Evolving Home.</p>
-    <form class="email-form" onsubmit="return handleSubmit(event)">
-      <input type="email" placeholder="votre@email.fr" required id="email-input">
-      <button type="submit">M'inscrire</button>
-    </form>
+    <h2>Commencez Maintenant</h2>
+    <p>Créez votre compte gratuit et sauvegardez votre adresse pour obtenir votre score énergétique.</p>
+    <a href="/auth/login" class="cta-btn">Créer Mon Compte →</a>
   </section>
 
   <footer>
     <p>© 2026 Evolving Home — Rendez votre logement plus performant.</p>
     <p style="margin-top:8px"><a href="/contractors?country=FR" style="color:#059669">Trouver un artisan RGE →</a></p>
   </footer>
-
-  <script>
-    async function handleSubmit(e) {
-      e.preventDefault();
-      const email = document.getElementById('email-input').value;
-      try {
-        const res = await fetch('/api/epc/waitlist', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, country: 'FR', source: 'landing-fr' })
-        });
-        if (res.ok) {
-          e.target.innerHTML = '<p style="color:#fbbf24;font-size:1.2rem">✅ Merci ! On vous tient au courant.</p>';
-        }
-      } catch (err) {
-        console.error(err);
-      }
-    }
-  </script>
 </body>
 </html>

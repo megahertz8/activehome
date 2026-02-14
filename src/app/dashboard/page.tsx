@@ -286,15 +286,17 @@ export default function DashboardPage() {
               </div>
             )}
 
-            {/* Add new home button */}
+            {/* Add new home button - hidden if user already has 1 home */}
             <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold">Your Homes</h2>
-              <Link href="/?scan=true">
-                <Button className="bg-primary hover:bg-primary/90">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Another Home
-                </Button>
-              </Link>
+              <h2 className="text-xl font-semibold">Your Home</h2>
+              {homes.length < 1 && (
+                <Link href="/?scan=true">
+                  <Button className="bg-primary hover:bg-primary/90">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Another Home
+                  </Button>
+                </Link>
+              )}
             </div>
 
             {/* Homes grid */}

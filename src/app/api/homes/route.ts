@@ -55,7 +55,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Postcode and address are required' }, { status: 400 })
     }
 
-    // Check if home already exists
+    // Enforce 1 home per user limit
+    const { data: existingHomes, error: countError } = await supabase
+      .from('saved_homes')
+      .select('id')
+      .eq('user_id', user.id)
+
+    if (countError) {
+      console.error('Error checking home count:', countError)
+      return NextResponse.json({ error: 'Failed to check home count' }, { status: 500 })
+    }
+
+    if (existingHomes && existingHomes.length >= 1) {
+      return NextResponse.json({ error: 'You can only save one home per account' }, { status: 403 })
+    }
+
+    // Check if this specific home already exists (redundant now, but kept for safety)
     const { data: existing } = await supabase
       .from('saved_homes')
       .select('id')

@@ -78,36 +78,14 @@
   </section>
 
   <section class="waitlist">
-    <h2>Binnenkort beschikbaar in Nederland</h2>
-    <p>Schrijf je in om als eerste toegang te krijgen tot Evolving Home.</p>
-    <form class="email-form" onsubmit="return handleSubmit(event)">
-      <input type="email" placeholder="jouw@email.nl" required id="email-input">
-      <button type="submit">Aanmelden</button>
-    </form>
+    <h2>Begin Nu</h2>
+    <p>Maak een gratis account aan en bewaar je adres om je energiescore te krijgen.</p>
+    <a href="/auth/login" class="cta-btn">Aanmaken Account →</a>
   </section>
 
   <footer>
     <p>© 2026 Evolving Home — Maak je woning energiezuiniger.</p>
     <p style="margin-top:8px"><a href="/contractors?country=NL" style="color:#2563eb">Vind een gecertificeerd installateur →</a></p>
   </footer>
-
-  <script>
-    async function handleSubmit(e) {
-      e.preventDefault();
-      const email = document.getElementById('email-input').value;
-      try {
-        const res = await fetch('/api/epc/waitlist', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, country: 'NL', source: 'landing-nl' })
-        });
-        if (res.ok) {
-          e.target.innerHTML = '<p style="color:#f97316;font-size:1.2rem">✅ Bedankt! We houden je op de hoogte.</p>';
-        }
-      } catch (err) {
-        console.error(err);
-      }
-    }
-  </script>
 </body>
 </html>

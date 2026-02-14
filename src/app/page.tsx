@@ -3,7 +3,7 @@
 import { useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import PostcodeForm from "@/components/PostcodeForm";
+import SignUpCTA from "@/components/SignUpCTA";
 
 function HomeContent() {
   const searchParams = useSearchParams();
@@ -38,15 +38,15 @@ function HomeContent() {
           <span className="text-primary">Evolving</span> Home
         </h1>
         <p className="text-xl md:text-2xl text-muted-foreground mb-2">
-          Your home&apos;s energy score in 30 seconds
+          Create your free account to get your personalized energy score
         </p>
         <p className="text-muted-foreground">
-          Free. Private. No app download needed.
+          Save your address. Track improvements. Get energy insights.
         </p>
       </div>
 
-      {/* Search */}
-      <PostcodeForm />
+      {/* Sign Up CTA */}
+      <SignUpCTA />
 
       {/* Value Props */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl w-full">
