@@ -42,3 +42,4 @@ data/
 
 # Supabase
 supabase/.temp/
+dashboard/dashboard.log
