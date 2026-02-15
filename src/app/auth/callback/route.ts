@@ -29,14 +29,29 @@ export async function GET(request: NextRequest) {
         headers: { cookie: request.headers.get('cookie') || '' }
       }).catch(() => {});
 
+      // Check if user has a saved home → returning user goes to dashboard
+      // New user (no home) goes to onboarding
+      const { data: { user } } = await supabase.auth.getUser()
+      let redirectPath = next
+
+      if (user && next === '/') {
+        const { data: homes } = await supabase
+          .from('saved_homes')
+          .select('id')
+          .eq('user_id', user.id)
+          .limit(1)
+
+        redirectPath = (homes && homes.length > 0) ? '/dashboard' : '/onboarding'
+      }
+
       const forwardedHost = request.headers.get('x-forwarded-host')
       const isLocalEnv = process.env.NODE_ENV === 'development'
       if (isLocalEnv) {
-        return NextResponse.redirect(`${origin}${next}`)
+        return NextResponse.redirect(`${origin}${redirectPath}`)
       } else if (forwardedHost) {
-        return NextResponse.redirect(`https://${forwardedHost}${next}`)
+        return NextResponse.redirect(`https://${forwardedHost}${redirectPath}`)
       } else {
-        return NextResponse.redirect(`${origin}${next}`)
+        return NextResponse.redirect(`${origin}${redirectPath}`)
       }
     }
   }
