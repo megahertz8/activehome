@@ -29,6 +29,7 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  // Redirect to new /api/homes/claim endpoint for backward compatibility
   try {
     const supabase = createSupabaseServerClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -38,89 +39,34 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const {
-      postcode,
-      address,
-      lmk_key,
-      current_rating,
-      potential_rating,
-      current_efficiency,
-      potential_efficiency,
-      annual_energy_cost,
-      solar_potential_kwh,
-      score_data
-    } = body
 
-    if (!postcode || !address) {
-      return NextResponse.json({ error: 'Postcode and address are required' }, { status: 400 })
+    // Forward to claim endpoint with proper format
+    const claimResponse = await fetch(
+      new URL('/api/homes/claim', request.url).toString(),
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          address: body.address,
+          postcode: body.postcode,
+          lat: body.lat,
+          lng: body.lng,
+          epcData: body.lmk_key ? {
+            'lmk-key': body.lmk_key,
+            'current-energy-rating': body.current_rating,
+            'potential-energy-rating': body.potential_rating,
+            'current-energy-efficiency': body.current_efficiency?.toString(),
+            'potential-energy-efficiency': body.potential_efficiency?.toString()
+          } : undefined
+        })
+      }
+    )
+
+    const home = await claimResponse.json()
+    
+    if (!claimResponse.ok) {
+      return NextResponse.json({ error: home.error || 'Failed to claim home' }, { status: claimResponse.status })
     }
-
-    // Enforce 1 home per user limit
-    const { data: existingHomes, error: countError } = await supabase
-      .from('saved_homes')
-      .select('id')
-      .eq('user_id', user.id)
-
-    if (countError) {
-      console.error('Error checking home count:', countError)
-      return NextResponse.json({ error: 'Failed to check home count' }, { status: 500 })
-    }
-
-    if (existingHomes && existingHomes.length >= 1) {
-      return NextResponse.json({ error: 'You can only save one home per account' }, { status: 403 })
-    }
-
-    // Check if this specific home already exists (redundant now, but kept for safety)
-    const { data: existing } = await supabase
-      .from('saved_homes')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('postcode', postcode)
-      .eq('address', address)
-      .single()
-
-    if (existing) {
-      return NextResponse.json({ error: 'Home already saved' }, { status: 409 })
-    }
-
-    const { data: home, error } = await supabase
-      .from('saved_homes')
-      .insert({
-        user_id: user.id,
-        postcode,
-        address,
-        lmk_key,
-        current_rating,
-        potential_rating,
-        current_efficiency,
-        potential_efficiency,
-        annual_energy_cost,
-        solar_potential_kwh,
-        score_data,
-        scan_count: 1
-      })
-      .select()
-      .single()
-
-    if (error) {
-      console.error('Error saving home:', error)
-      return NextResponse.json({ error: 'Failed to save home' }, { status: 500 })
-    }
-
-    // Award 25 credits for first scan
-    const { data: currentProfile } = await supabase
-      .from('profiles')
-      .select('credits')
-      .eq('id', user.id)
-      .single()
-
-    const currentCredits = currentProfile?.credits || 0
-    await supabase
-      .from('profiles')
-      .upsert({
-        id: user.id,
-        credits: currentCredits + 25
-      }, { onConflict: 'id' })
 
     return NextResponse.json(home)
   } catch (error) {

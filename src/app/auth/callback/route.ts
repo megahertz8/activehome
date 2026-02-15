@@ -35,18 +35,24 @@ export async function GET(request: NextRequest) {
         headers: { cookie: request.headers.get('cookie') || '' }
       }).catch(() => {});
 
-      // Check if user has a saved home
+      // Check if user has a home (via home_owners)
       const { data: { user } } = await supabase.auth.getUser()
       let redirectPath = next
 
       if (user && next === '/') {
-        const { data: homes } = await supabase
-          .from('saved_homes')
-          .select('id')
+        const { data: ownership } = await supabase
+          .from('home_owners')
+          .select('home_id')
           .eq('user_id', user.id)
+          .eq('is_current', true)
           .limit(1)
+          .single()
 
-        redirectPath = (homes && homes.length > 0) ? '/dashboard' : '/onboarding'
+        if (ownership?.home_id) {
+          redirectPath = `/home/${ownership.home_id}`
+        } else {
+          redirectPath = '/onboarding'
+        }
       }
 
       const forwardedHost = request.headers.get('x-forwarded-host')

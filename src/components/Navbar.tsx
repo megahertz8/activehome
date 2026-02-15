@@ -22,7 +22,25 @@ export default function Navbar() {
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [homeId, setHomeId] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  // Fetch user's home ID
+  useEffect(() => {
+    if (user) {
+      supabase
+        .from('home_owners')
+        .select('home_id')
+        .eq('user_id', user.id)
+        .eq('is_current', true)
+        .single()
+        .then(({ data }) => {
+          if (data?.home_id) {
+            setHomeId(data.home_id);
+          }
+        });
+    }
+  }, [user]);
 
   // Close user menu on click outside
   useEffect(() => {
@@ -83,14 +101,16 @@ export default function Navbar() {
 
               {userMenuOpen && (
                 <div className="absolute right-0 top-10 w-48 bg-card border border-border rounded-lg shadow-lg py-1 z-50">
-                  <Link
-                    href="/dashboard"
-                    onClick={() => setUserMenuOpen(false)}
-                    className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted transition-colors"
-                  >
-                    <LayoutDashboard size={16} />
-                    Dashboard
-                  </Link>
+                  {homeId && (
+                    <Link
+                      href={`/home/${homeId}`}
+                      onClick={() => setUserMenuOpen(false)}
+                      className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted transition-colors"
+                    >
+                      <LayoutDashboard size={16} />
+                      My Home
+                    </Link>
+                  )}
                   <button
                     onClick={handleLogout}
                     className="flex items-center gap-2 px-4 py-2 text-sm text-red-400 hover:bg-muted transition-colors w-full text-left"
@@ -133,9 +153,11 @@ export default function Navbar() {
             ))}
             {user ? (
               <>
-                <Link href="/dashboard" onClick={() => setMobileOpen(false)}>
-                  <Button size="sm" variant="outline" className="w-full">Dashboard</Button>
-                </Link>
+                {homeId && (
+                  <Link href={`/home/${homeId}`} onClick={() => setMobileOpen(false)}>
+                    <Button size="sm" variant="outline" className="w-full">My Home</Button>
+                  </Link>
+                )}
                 <button
                   onClick={() => { handleLogout(); setMobileOpen(false); }}
                   className="text-sm text-red-400 hover:text-red-300 text-left"
