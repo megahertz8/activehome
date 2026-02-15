@@ -6,6 +6,14 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get('code')
   const next = searchParams.get('next') ?? '/'
 
+  // Log any OAuth errors from Supabase
+  const authError = searchParams.get('error')
+  const authErrorDesc = searchParams.get('error_description')
+  if (authError) {
+    console.error('OAuth error:', authError, authErrorDesc)
+    return NextResponse.redirect(`${origin}/auth/auth-code-error?error=${encodeURIComponent(authErrorDesc || authError)}`)
+  }
+
   if (code) {
     const cookiesToSet: { name: string; value: string; options: any }[] = []
 
