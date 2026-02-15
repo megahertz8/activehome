@@ -5,7 +5,15 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/components/auth/AuthProvider";
-import { detectCountry } from "@/lib/adapters";
+// Inline country detection to avoid importing server-side adapter chain (better-sqlite3/fs)
+function detectCountry(postcode: string): string {
+  const cleaned = postcode.trim().replace(/\s+/g, '');
+  if (/^[A-Z]{1,2}\d[A-Z\d]?\d[A-Z]{2}$/i.test(cleaned)) return 'GB';
+  if (/^\d{5}$/.test(cleaned)) return 'FR';
+  if (/^\d{4}[A-Z]{2}$/i.test(cleaned)) return 'NL';
+  if (/^\d{4}$/.test(cleaned) && parseInt(cleaned) >= 200) return 'AU';
+  return 'GB';
+}
 import GooglePlacesAutocomplete from "./GooglePlacesAutocomplete";
 
 export default function SignUpCTA() {
