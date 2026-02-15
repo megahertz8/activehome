@@ -35,6 +35,18 @@ export const U_VALUES = {
   }
 };
 
+// EUI Benchmarks (kWh/m²/year) by property type
+const EUI_BENCHMARKS: Record<string, number> = {
+  'detached': 250,
+  'semi-detached': 200,
+  'terraced': 180,
+  'mid-terrace': 175,
+  'end-terrace': 190,
+  'flat': 150,
+  'bungalow': 220,
+  'maisonette': 160,
+};
+
 export interface EnhancedEnergyResults extends EnergyResults {
   epc_record: EPCRecord;
   heat_loss_breakdown: {
@@ -48,6 +60,10 @@ export interface EnhancedEnergyResults extends EnergyResults {
     water_heating_kwh: number;
     total_cost_savings: number;
   };
+  eui_kwh_m2: number;
+  benchmark_median: number;
+  vs_median_percent: number;
+  property_type_benchmark: string;
 }
 
 export interface UpgradeRecommendation {
@@ -89,6 +105,26 @@ export async function calculateEnhancedEnergy(epc: EPCRecord): Promise<EnhancedE
   // Estimate cost savings (assuming gas heating at £0.08/kWh)
   const costSavings = totalSavings * 0.08;
 
+  // Calculate EUI (Energy Use Intensity)
+  const totalEnergyDemand = Object.values(results.energy_requirements).reduce(
+    (sum, req) => sum + (req?.quantity || 0), 
+    0
+  );
+  
+  // Get total floor area from first floor entry (or use EPC value)
+  const totalFloorArea = buildingData.TFA || 
+    Object.values(buildingData.floors)[0]?.area || 
+    parseFloat(epc.total_floor_area || '100');
+  
+  const eui = totalEnergyDemand / totalFloorArea;
+  
+  // Get benchmark for property type
+  const propertyType = (epc.property_type || 'detached').toLowerCase();
+  const benchmark = EUI_BENCHMARKS[propertyType] || 
+    EUI_BENCHMARKS['semi-detached'] || 200;
+  
+  const vsMedianPercent = ((eui - benchmark) / benchmark) * 100;
+
   const enhanced: EnhancedEnergyResults = {
     ...results,
     epc_record: epc,
@@ -98,7 +134,11 @@ export async function calculateEnhancedEnergy(epc: EPCRecord): Promise<EnhancedE
       space_heating_kwh: totalSavings,
       water_heating_kwh: 0, // Could be extended
       total_cost_savings: costSavings
-    }
+    },
+    eui_kwh_m2: Math.round(eui),
+    benchmark_median: benchmark,
+    vs_median_percent: Math.round(vsMedianPercent),
+    property_type_benchmark: propertyType
   };
 
   return enhanced;

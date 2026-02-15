@@ -9,6 +9,7 @@ import Link from "next/link";
 import Head from "next/head";
 import ShareDialog from "@/components/ShareDialog";
 import SatelliteMap from "@/components/SatelliteMap";
+import Roadmap from "./Roadmap";
 
 interface BuildingGeometry {
   footprintArea_m2: number;
@@ -58,6 +59,17 @@ interface EPCData {
     heatingDemand_kWh: number;
     hotWaterDemand_kWh: number;
     totalDemand_kWh: number;
+    eui_kwh_m2?: number;
+    benchmark_median?: number;
+    vs_median_percent?: number;
+    property_type_benchmark?: string;
+    upgrade_recommendations?: Array<{
+      type: 'wall_insulation' | 'roof_insulation' | 'floor_insulation' | 'window_upgrade' | 'ventilation_upgrade';
+      description: string;
+      cost_estimate: number;
+      savings_kwh_year: number;
+      payback_years: number;
+    }>;
   };
   livePricing?: {
     region: string;
@@ -381,6 +393,61 @@ export default function ScoreResults() {
         </Card>
       )}
 
+      {/* EUI Benchmarking */}
+      {data.energyCalc && data.energyCalc.eui_kwh_m2 && data.energyCalc.benchmark_median && (
+        <Card className="bg-[#1c1c28] border-gray-700 w-full max-w-lg mb-6">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg text-[#4ecdc4]">📊 Energy Use Intensity (EUI)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="text-center">
+                <p className="text-sm text-gray-400 mb-2">Your Home</p>
+                <p className="text-4xl font-bold text-foreground">
+                  {data.energyCalc.eui_kwh_m2} <span className="text-xl text-gray-400">kWh/m²</span>
+                </p>
+              </div>
+              
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-400">Your EUI</span>
+                  <span className="font-semibold">{data.energyCalc.eui_kwh_m2} kWh/m²</span>
+                </div>
+                <div className="w-full bg-gray-700 rounded-full h-3 relative overflow-hidden">
+                  <div
+                    className={`h-3 rounded-full ${
+                      data.energyCalc.vs_median_percent! < 0 ? 'bg-green-500' : 'bg-orange-500'
+                    }`}
+                    style={{ 
+                      width: `${Math.min(100, Math.abs(data.energyCalc.vs_median_percent!) + 50)}%` 
+                    }}
+                  ></div>
+                  <div 
+                    className="absolute top-0 w-1 h-3 bg-white"
+                    style={{ left: '50%' }}
+                  ></div>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-400">Benchmark ({data.energyCalc.property_type_benchmark})</span>
+                  <span className="font-semibold">{data.energyCalc.benchmark_median} kWh/m²</span>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-lg bg-gray-800 text-center">
+                <p className="text-sm text-gray-400">
+                  Your home uses{' '}
+                  <strong className={data.energyCalc.vs_median_percent! < 0 ? 'text-green-400' : 'text-orange-400'}>
+                    {Math.abs(data.energyCalc.vs_median_percent!)}%{' '}
+                    {data.energyCalc.vs_median_percent! < 0 ? 'less' : 'more'}
+                  </strong>{' '}
+                  energy than the average {data.energyCalc.property_type_benchmark} home
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Solar Potential */}
       {data.solar && (
         <Card className="bg-[#1c1c28] border-gray-700 w-full max-w-lg mb-6">
@@ -409,6 +476,13 @@ export default function ScoreResults() {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Phased Roadmap */}
+      {data.energyCalc && data.energyCalc.upgrade_recommendations && data.energyCalc.upgrade_recommendations.length > 0 && (
+        <div className="w-full max-w-lg mb-6">
+          <Roadmap recommendations={data.energyCalc.upgrade_recommendations} />
+        </div>
       )}
 
       {/* Property Details */}
