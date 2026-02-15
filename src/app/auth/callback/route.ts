@@ -7,6 +7,8 @@ export async function GET(request: NextRequest) {
   const next = searchParams.get('next') ?? '/'
 
   if (code) {
+    const cookiesToSet: { name: string; value: string; options: any }[] = []
+
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -15,12 +17,16 @@ export async function GET(request: NextRequest) {
           getAll() {
             return request.cookies.getAll()
           },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
+          setAll(cookies) {
+            cookies.forEach((cookie) => {
+              cookiesToSet.push(cookie)
+              request.cookies.set(cookie.name, cookie.value)
+            })
           },
         },
       }
     )
+
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
       // Fire welcome email (best-effort, non-blocking)
@@ -29,8 +35,7 @@ export async function GET(request: NextRequest) {
         headers: { cookie: request.headers.get('cookie') || '' }
       }).catch(() => {});
 
-      // Check if user has a saved home → returning user goes to dashboard
-      // New user (no home) goes to onboarding
+      // Check if user has a saved home
       const { data: { user } } = await supabase.auth.getUser()
       let redirectPath = next
 
@@ -46,13 +51,24 @@ export async function GET(request: NextRequest) {
 
       const forwardedHost = request.headers.get('x-forwarded-host')
       const isLocalEnv = process.env.NODE_ENV === 'development'
+
+      let redirectUrl: string
       if (isLocalEnv) {
-        return NextResponse.redirect(`${origin}${redirectPath}`)
+        redirectUrl = `${origin}${redirectPath}`
       } else if (forwardedHost) {
-        return NextResponse.redirect(`https://${forwardedHost}${redirectPath}`)
+        redirectUrl = `https://${forwardedHost}${redirectPath}`
       } else {
-        return NextResponse.redirect(`${origin}${redirectPath}`)
+        redirectUrl = `${origin}${redirectPath}`
       }
+
+      const response = NextResponse.redirect(redirectUrl)
+
+      // Apply auth cookies to the response
+      cookiesToSet.forEach(({ name, value, options }) => {
+        response.cookies.set(name, value, options)
+      })
+
+      return response
     }
   }
 
