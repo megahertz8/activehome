@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -36,9 +37,10 @@ function ratingColor(rating: string): string {
 
 export default function DashboardPage() {
   const { user } = useAuth()
+  const router = useRouter()
   const [homes, setHomes] = useState<SavedHome[]>([])
   const [profile, setProfile] = useState<Profile>({ credits: 0 })
-  const [loading, setLoading] = useState(true)
+  const [status, setStatus] = useState<'loading' | 'redirecting' | 'ready'>('loading')
   const [selectedPlace, setSelectedPlace] = useState<google.maps.places.PlaceResult | null>(null)
   const [scanning, setScanning] = useState(false)
 
@@ -54,12 +56,21 @@ export default function DashboardPage() {
       const response = await fetch('/api/homes')
       if (response.ok) {
         const data = await response.json()
-        setHomes(data)
+        if (data.length > 0) {
+          setStatus('redirecting')
+          router.push(`/home/${data[0].id}`)
+        } else {
+          setHomes(data)
+          setStatus('ready')
+        }
+      } else {
+        setHomes([])
+        setStatus('ready')
       }
     } catch (error) {
       console.error('Failed to fetch homes:', error)
-    } finally {
-      setLoading(false)
+      setHomes([])
+      setStatus('ready')
     }
   }
 
@@ -123,256 +134,254 @@ export default function DashboardPage() {
 
   const stats = calculateStats()
 
-  if (loading) {
-    return (
-      <ProtectedRoute>
+  return (
+    <ProtectedRoute>
+      {(status === 'loading' || status === 'redirecting') ? (
         <div className="flex items-center justify-center min-h-96">
           <div className="text-center">
             <div className="text-4xl mb-4 animate-pulse">🏠</div>
-            <p className="text-muted-foreground">Loading your dashboard...</p>
-          </div>
-        </div>
-      </ProtectedRoute>
-    )
-  }
-
-  return (
-    <ProtectedRoute>
-      <div className="space-y-8">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">
-              Welcome back{user?.user_metadata?.full_name ? `, ${user.user_metadata.full_name.split(' ')[0]}` : ''}!
-            </h1>
-            <p className="text-muted-foreground mt-1">
-              Manage your home's energy efficiency and track improvements
+            <p className="text-muted-foreground">
+              {status === 'loading' ? 'Loading your dashboard...' : 'Taking you to your home...'}
             </p>
           </div>
-          <div className="flex items-center space-x-4">
-            <div className="text-right">
-              <p className="text-sm text-muted-foreground">Credits</p>
-              <p className="text-2xl font-bold text-primary">{profile.credits || 0}</p>
-            </div>
-          </div>
         </div>
-
-        {homes.length === 0 ? (
-          // First-time user onboarding
-          <div className="text-center py-16">
-            <div className="max-w-md mx-auto space-y-6">
-              <div className="text-6xl">🏠</div>
-              <h2 className="text-2xl font-bold">Get started with your first home scan</h2>
-              <p className="text-muted-foreground">
-                Enter your postcode below to get your home's energy score in 30 seconds
+      ) : (
+        <div className="space-y-8">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold">
+                Welcome back{user?.user_metadata?.full_name ? `, ${user.user_metadata.full_name.split(' ')[0]}` : ''}!
+              </h1>
+              <p className="text-muted-foreground mt-1">
+                Manage your home's energy efficiency and track improvements
               </p>
-
-              {/* How it works steps */}
-              <div className="text-left bg-card border border-border rounded-lg p-6 space-y-4">
-                <h3 className="font-semibold text-primary">How it works</h3>
-                <div className="space-y-3">
-                  <div className="flex items-start space-x-3">
-                    <div className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-bold">1</div>
-                    <div>
-                      <p className="font-medium">Enter your address</p>
-                      <p className="text-sm text-muted-foreground">We'll find your property details</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start space-x-3">
-                    <div className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-bold">2</div>
-                    <div>
-                      <p className="font-medium">Get your energy score</p>
-                      <p className="text-sm text-muted-foreground">See your current rating and potential savings</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start space-x-3">
-                    <div className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-bold">3</div>
-                    <div>
-                      <p className="font-medium">Save to your dashboard</p>
-                      <p className="text-sm text-muted-foreground">Track improvements and get recommendations</p>
-                    </div>
-                  </div>
-                </div>
+            </div>
+            <div className="flex items-center space-x-4">
+              <div className="text-right">
+                <p className="text-sm text-muted-foreground">Credits</p>
+                <p className="text-2xl font-bold text-primary">{profile.credits || 0}</p>
               </div>
-
-              {/* Address input */}
-              <div className="space-y-3">
-                <GooglePlacesAutocomplete
-                  apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ""}
-                  onPlaceSelect={setSelectedPlace}
-                  placeholder="Enter your UK address"
-                  className="text-center text-lg"
-                />
-                <Button
-                  onClick={handleScanHome}
-                  disabled={scanning || !selectedPlace}
-                  className="w-full h-12 text-lg"
-                >
-                  {scanning ? 'Scanning...' : 'Scan Your Home'}
-                </Button>
-              </div>
-
-              {/* Referral stats */}
-              {profile.referral_code && (
-                <div className="bg-card border border-border rounded-lg p-4">
-                  <div className="flex items-center space-x-2 mb-2">
-                    <Users className="h-4 w-4 text-primary" />
-                    <span className="font-medium">Referrals</span>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    Share your referral code to earn credits: <code className="bg-muted px-1 rounded">{profile.referral_code}</code>
-                  </p>
-                </div>
-              )}
             </div>
           </div>
-        ) : (
-          // Returning user dashboard
-          <>
-            {/* Quick stats */}
-            {stats && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium text-muted-foreground flex items-center">
-                      <TrendingUp className="h-4 w-4 mr-2" />
-                      Total Annual Savings Potential
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-2xl font-bold">£{stats.totalSavings.toLocaleString()}</p>
-                  </CardContent>
-                </Card>
 
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium text-muted-foreground flex items-center">
-                      <Home className="h-4 w-4 mr-2 text-green-500" />
-                      Best Rated Home
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center space-x-2">
-                      <div
-                        className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold"
-                        style={{ backgroundColor: ratingColor(stats.bestHome.current_rating) }}
-                      >
-                        {stats.bestHome.current_rating}
+          {homes.length === 0 ? (
+            // First-time user onboarding
+            <div className="text-center py-16">
+              <div className="max-w-md mx-auto space-y-6">
+                <div className="text-6xl">🏠</div>
+                <h2 className="text-2xl font-bold">Get started with your first home scan</h2>
+                <p className="text-muted-foreground">
+                  Enter your postcode below to get your home's energy score in 30 seconds
+                </p>
+
+                {/* How it works steps */}
+                <div className="text-left bg-card border border-border rounded-lg p-6 space-y-4">
+                  <h3 className="font-semibold text-primary">How it works</h3>
+                  <div className="space-y-3">
+                    <div className="flex items-start space-x-3">
+                      <div className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-bold">1</div>
+                      <div>
+                        <p className="font-medium">Enter your address</p>
+                        <p className="text-sm text-muted-foreground">We'll find your property details</p>
                       </div>
-                      <span className="text-sm truncate">{stats.bestHome.address}</span>
                     </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium text-muted-foreground flex items-center">
-                      <TrendingDown className="h-4 w-4 mr-2 text-red-500" />
-                      Home Needing Most Work
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center space-x-2">
-                      <div
-                        className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold"
-                        style={{ backgroundColor: ratingColor(stats.worstHome.current_rating) }}
-                      >
-                        {stats.worstHome.current_rating}
+                    <div className="flex items-start space-x-3">
+                      <div className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-bold">2</div>
+                      <div>
+                        <p className="font-medium">Get your energy score</p>
+                        <p className="text-sm text-muted-foreground">See your current rating and potential savings</p>
                       </div>
-                      <span className="text-sm truncate">{stats.worstHome.address}</span>
                     </div>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
+                    <div className="flex items-start space-x-3">
+                      <div className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-bold">3</div>
+                      <div>
+                        <p className="font-medium">Save to your dashboard</p>
+                        <p className="text-sm text-muted-foreground">Track improvements and get recommendations</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
-            {/* Add new home button - hidden if user already has 1 home */}
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold">Your Home</h2>
-              {homes.length < 1 && (
-                <Link href="/?scan=true">
-                  <Button className="bg-primary hover:bg-primary/90">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Another Home
+                {/* Address input */}
+                <div className="space-y-3">
+                  <GooglePlacesAutocomplete
+                    apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ""}
+                    onPlaceSelect={setSelectedPlace}
+                    placeholder="Enter your UK address"
+                    className="text-center text-lg"
+                  />
+                  <Button
+                    onClick={handleScanHome}
+                    disabled={scanning || !selectedPlace}
+                    className="w-full h-12 text-lg"
+                  >
+                    {scanning ? 'Scanning...' : 'Scan Your Home'}
                   </Button>
-                </Link>
-              )}
+                </div>
+
+                {/* Referral stats */}
+                {profile.referral_code && (
+                  <div className="bg-card border border-border rounded-lg p-4">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <Users className="h-4 w-4 text-primary" />
+                      <span className="font-medium">Referrals</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Share your referral code to earn credits: <code className="bg-muted px-1 rounded">{profile.referral_code}</code>
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
-
-            {/* Homes grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {homes.map((home) => (
-                <Link key={home.id} href={`/dashboard/home/${home.id}`}>
-                  <Card className="hover:shadow-lg transition-shadow cursor-pointer group">
+          ) : (
+            // Returning user dashboard
+            <>
+              {/* Quick stats */}
+              {stats && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <Card>
                     <CardHeader className="pb-3">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1 min-w-0">
-                          <CardTitle className="text-lg truncate group-hover:text-primary transition-colors">
-                            {home.address}
-                          </CardTitle>
-                          <p className="text-sm text-muted-foreground flex items-center mt-1">
-                            <MapPin className="h-3 w-3 mr-1" />
-                            {home.postcode}
-                          </p>
-                        </div>
-                        <div className="flex flex-col items-end space-y-1">
-                          <div
-                            className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold text-white"
-                            style={{ backgroundColor: ratingColor(home.current_rating) }}
-                          >
-                            {home.current_rating}
-                          </div>
-                          {home.potential_rating && home.potential_rating !== home.current_rating && (
-                            <Badge variant="secondary" className="text-xs">
-                              → {home.potential_rating}
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
+                      <CardTitle className="text-sm font-medium text-muted-foreground flex items-center">
+                        <TrendingUp className="h-4 w-4 mr-2" />
+                        Total Annual Savings Potential
+                      </CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Last scanned</span>
-                        <span className="flex items-center">
-                          <Calendar className="h-3 w-3 mr-1" />
-                          {new Date(home.last_scanned_at).toLocaleDateString()}
-                        </span>
-                      </div>
+                    <CardContent>
+                      <p className="text-2xl font-bold">£{stats.totalSavings.toLocaleString()}</p>
+                    </CardContent>
+                  </Card>
 
-                      {home.annual_energy_cost && (
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground">Annual cost</span>
-                          <span className="font-medium">£{home.annual_energy_cost.toLocaleString()}</span>
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-medium text-muted-foreground flex items-center">
+                        <Home className="h-4 w-4 mr-2 text-green-500" />
+                        Best Rated Home
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center space-x-2">
+                        <div
+                          className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold"
+                          style={{ backgroundColor: ratingColor(stats.bestHome.current_rating) }}
+                        >
+                          {stats.bestHome.current_rating}
                         </div>
-                      )}
-
-                      {home.solar_potential_kwh && (
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground">Solar potential</span>
-                          <span className="font-medium text-primary">{home.solar_potential_kwh.toLocaleString()} kWh</span>
-                        </div>
-                      )}
-
-                      <div className="pt-2 border-t border-border">
-                        <p className="text-xs text-muted-foreground mb-2">Recommended improvements</p>
-                        <div className="flex items-center space-x-2">
-                          <Button size="sm" variant="outline" className="flex-1">
-                            <RefreshCw className="h-3 w-3 mr-1" />
-                            Rescan
-                          </Button>
-                          <Button size="sm" variant="ghost">
-                            View Details
-                          </Button>
-                        </div>
+                        <span className="text-sm truncate">{stats.bestHome.address}</span>
                       </div>
                     </CardContent>
                   </Card>
-                </Link>
-              ))}
-            </div>
-          </>
-        )}
-      </div>
+
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-medium text-muted-foreground flex items-center">
+                        <TrendingDown className="h-4 w-4 mr-2 text-red-500" />
+                        Home Needing Most Work
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center space-x-2">
+                        <div
+                          className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold"
+                          style={{ backgroundColor: ratingColor(stats.worstHome.current_rating) }}
+                        >
+                          {stats.worstHome.current_rating}
+                        </div>
+                        <span className="text-sm truncate">{stats.worstHome.address}</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+
+              {/* Add new home button - hidden if user already has 1 home */}
+              <div className="flex justify-between items-center">
+                <h2 className="text-xl font-semibold">Your Home</h2>
+                {homes.length < 1 && (
+                  <Link href="/?scan=true">
+                    <Button className="bg-primary hover:bg-primary/90">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Another Home
+                    </Button>
+                  </Link>
+                )}
+              </div>
+
+              {/* Homes grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {homes.map((home) => (
+                  <Link key={home.id} href={`/home/${home.id}`}>
+                    <Card className="hover:shadow-lg transition-shadow cursor-pointer group">
+                      <CardHeader className="pb-3">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1 min-w-0">
+                            <CardTitle className="text-lg truncate group-hover:text-primary transition-colors">
+                              {home.address}
+                            </CardTitle>
+                            <p className="text-sm text-muted-foreground flex items-center mt-1">
+                              <MapPin className="h-3 w-3 mr-1" />
+                              {home.postcode}
+                            </p>
+                          </div>
+                          <div className="flex flex-col items-end space-y-1">
+                            <div
+                              className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold text-white"
+                              style={{ backgroundColor: ratingColor(home.current_rating) }}
+                            >
+                              {home.current_rating}
+                            </div>
+                            {home.potential_rating && home.potential_rating !== home.current_rating && (
+                              <Badge variant="secondary" className="text-xs">
+                                → {home.potential_rating}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground">Last scanned</span>
+                          <span className="flex items-center">
+                            <Calendar className="h-3 w-3 mr-1" />
+                            {new Date(home.last_scanned_at).toLocaleDateString()}
+                          </span>
+                        </div>
+
+                        {home.annual_energy_cost && (
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">Annual cost</span>
+                            <span className="font-medium">£{home.annual_energy_cost.toLocaleString()}</span>
+                          </div>
+                        )}
+
+                        {home.solar_potential_kwh && (
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">Solar potential</span>
+                            <span className="font-medium text-primary">{home.solar_potential_kwh.toLocaleString()} kWh</span>
+                          </div>
+                        )}
+
+                        <div className="pt-2 border-t border-border">
+                          <p className="text-xs text-muted-foreground mb-2">Recommended improvements</p>
+                          <div className="flex items-center space-x-2">
+                            <Button size="sm" variant="outline" className="flex-1">
+                              <RefreshCw className="h-3 w-3 mr-1" />
+                              Rescan
+                            </Button>
+                            <Button size="sm" variant="ghost">
+                              View Details
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
     </ProtectedRoute>
   )
 }
