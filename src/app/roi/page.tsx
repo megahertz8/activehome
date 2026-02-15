@@ -242,7 +242,7 @@ export default function ROICalculator() {
 
                 {/* Fabric-First Advisory - Show if heat pump is in the report AND insulation is in Phase 2+ */}
                 {allECMs.some(ecm => ecm.systemType === 'hp') && 
-                 allECMs.find(ecm => ecm.systemType === 'insulation')?.paybackYears >= 2 && (
+                 (allECMs.find(ecm => ecm.systemType === 'insulation')?.paybackYears ?? 0) >= 2 && (
                   <Card className="border-yellow-500/50 bg-yellow-500/10">
                     <CardContent className="pt-6">
                       <div className="space-y-3">

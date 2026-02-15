@@ -1,7 +1,7 @@
 import { createSupabaseServerClient } from './supabase-server';
 import { Home, HomeOwner, ScoreHistoryEntry, Improvement } from './types';
 import { EPCResult, searchByPostcode } from './epc';
-import { getSolarPotential } from './solar';
+import { estimateSolarPotential } from './solar';
 
 /**
  * Get the home associated with a user (current home only)
@@ -113,8 +113,8 @@ export async function claimHome(
     let solarPotentialKwh: number | null = null;
     if (lat && lng) {
       try {
-        const solar = await getSolarPotential(lat, lng);
-        solarPotentialKwh = solar.yearlyProduction;
+        const solar = await estimateSolarPotential({ lat, lon: lng });
+        solarPotentialKwh = solar?.annualGeneration_kWh ?? null;
       } catch (err) {
         console.error('Failed to fetch solar potential:', err);
       }

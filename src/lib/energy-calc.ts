@@ -112,9 +112,9 @@ export async function calculateEnhancedEnergy(epc: EPCRecord): Promise<EnhancedE
   );
   
   // Get total floor area from first floor entry (or use EPC value)
-  const totalFloorArea = buildingData.TFA || 
+  const totalFloorArea = (buildingData as any).TFA || 
     Object.values(buildingData.floors)[0]?.area || 
-    parseFloat(epc.total_floor_area || '100');
+    parseFloat(String(epc.total_floor_area || '100'));
   
   const eui = totalEnergyDemand / totalFloorArea;
   
