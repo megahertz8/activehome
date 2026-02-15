@@ -83,6 +83,51 @@ function OnboardingContent() {
       } else {
         setMatchedEPC(null);
       }
+
+      // Enrich with ratings if there are matches
+      if (matches.length > 0) {
+        const fetchPromises = matches.slice(0, 5).map(async (match) => {
+          try {
+            const res = await fetch(`/api/epc?postcode=${encodeURIComponent(newPostcode)}&address=${encodeURIComponent(match['lmk-key'])}`);
+            if (!res.ok) return null;
+            const data = await res.json();
+            return {
+              lmk: match['lmk-key'],
+              currentRating: data.currentRating || '',
+              propertyType: data.propertyType || ''
+            };
+          } catch {
+            return null;
+          }
+        });
+
+        Promise.all(fetchPromises).then((ratings) => {
+          setEpcResults((prev) =>
+            prev.map((item) => {
+              const ratingData = ratings.find((r) => r && r.lmk === item['lmk-key']);
+              if (ratingData) {
+                return {
+                  ...item,
+                  'current-energy-rating': ratingData.currentRating,
+                  'property-type': ratingData.propertyType
+                };
+              }
+              return item;
+            })
+          );
+
+          if (matchedEPC && matchedEPC !== 'multiple') {
+            const singleRating = ratings.find((r) => r && r.lmk === matchedEPC['lmk-key']);
+            if (singleRating) {
+              setMatchedEPC((prev) => ({
+                ...prev,
+                'current-energy-rating': singleRating.currentRating,
+                'property-type': singleRating.propertyType
+              }));
+            }
+          }
+        });
+      }
     } catch (err: any) {
       setError(err.message || "Failed to fetch EPC data");
       setMatchedEPC(null);
