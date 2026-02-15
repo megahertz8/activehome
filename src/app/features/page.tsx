@@ -98,14 +98,14 @@ const dataSources = [
 ];
 
 const appFeatures = [
-  { name: 'Camera Scan', emoji: '📷' },
-  { name: 'Satellite View', emoji: '🛰️' },
-  { name: 'Digital Twin', emoji: '🏡' },
-  { name: 'Energy Dashboard', emoji: '📊' },
-  { name: 'Energy Leagues', emoji: '🏆' },
-  { name: 'AI Recommendations', emoji: '🤖' },
-  { name: 'Grant Alerts', emoji: '🔔' },
-  { name: 'Multi-Country', emoji: '🌍' },
+  { name: '3D Room Scanning', emoji: '📐', description: 'Apple RoomPlan + Google ARCore — walk through your home and build a full 3D model. Walls, windows, doors, dimensions detected automatically.' },
+  { name: 'On-Device Digital Twin', emoji: '🏗️', description: 'Your home\'s 3D geometry becomes a physics-based energy model. Heat loss, insulation gaps, ventilation — all calculated on your phone, never uploaded.' },
+  { name: 'Room-by-Room Insights', emoji: '🔬', description: 'See exactly where energy escapes. Every surface mapped to savings. Upgrade roadmap ranked by ROI.' },
+  { name: 'LiDAR Precision', emoji: '📱', description: 'iPhone Pro users get sub-centimetre accuracy. The most detailed home energy scan possible without professional equipment.' },
+  { name: 'Recurring Audits', emoji: '🔄', description: 'Seasonal check-ins that track how your home performs over time. Your digital twin gets smarter with every scan.' },
+  { name: 'Smart Meter Pairing', emoji: '📊', description: 'Connect your smart meter for real consumption data. Compare actual vs. predicted — close the loop on savings.' },
+  { name: 'Grant Alerts', emoji: '🔔', description: 'Push notifications when new grants match your home. Never miss funding again.' },
+  { name: 'Multi-Country', emoji: '🌍', description: 'UK, France, Netherlands, Australia, Israel — and growing. One app, every country\'s energy system.' },
 ];
 
 export default function FeaturesPage() {
@@ -184,18 +184,22 @@ export default function FeaturesPage() {
               Coming Soon
             </Badge>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {appFeatures.map((feature, index) => (
               <Card
                 key={index}
-                className="border-border opacity-60 relative overflow-hidden"
+                className="border-border relative overflow-hidden"
               >
-                <CardContent className="pt-6 text-center space-y-3">
-                  <div className="text-3xl">{feature.emoji}</div>
-                  <h3 className="text-sm font-semibold text-foreground">
-                    {feature.name}
-                  </h3>
-                  <div className="absolute top-2 right-2 text-xl">🔒</div>
+                <CardContent className="pt-6 space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="text-3xl">{feature.emoji}</div>
+                    <h3 className="text-lg font-semibold text-foreground">
+                      {feature.name}
+                    </h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {feature.description}
+                  </p>
                 </CardContent>
               </Card>
             ))}
