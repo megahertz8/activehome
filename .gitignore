@@ -45,3 +45,5 @@ supabase/.temp/
 dashboard/dashboard.log
 dashboard/node_modules/
 dashboard/dashboard.log
+.env.test
+.env.vercel-check
