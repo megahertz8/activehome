@@ -1,4 +1,4 @@
-import { fetchPVGIS } from './pvgis';
+import { fetchPVGIS } from './pvgis-api';
 import { fetchPVWatts } from './pvwatts';
 
 export interface SolarParams {
