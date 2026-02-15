@@ -246,7 +246,7 @@ export default function ROICalculator() {
                               </h4>
                               <p className="text-xs text-muted-foreground mb-2">{ecm.description}</p>
                               <div className="flex gap-4 text-xs">
-                                <span>Cost: £{ecm.initialCost.toLocaleString()}</span>
+                                <span>Cost: £{ecm.initialCost.toLocaleString()}{ecm.grantAmount && <span className="text-emerald-400 ml-1">(−£{ecm.grantAmount.toLocaleString()} {ecm.grantName})</span>}</span>
                                 <span className="text-green-400">Saves: £{ecm.annualSavings}/yr</span>
                                 <span>Payback: {ecm.paybackYears}yr</span>
                               </div>
@@ -289,7 +289,7 @@ export default function ROICalculator() {
                               </h4>
                               <p className="text-xs text-muted-foreground mb-2">{ecm.description}</p>
                               <div className="flex gap-4 text-xs">
-                                <span>Cost: £{ecm.initialCost.toLocaleString()}</span>
+                                <span>Cost: £{ecm.initialCost.toLocaleString()}{ecm.grantAmount && <span className="text-emerald-400 ml-1">(−£{ecm.grantAmount.toLocaleString()} {ecm.grantName})</span>}</span>
                                 <span className="text-yellow-400">Saves: £{ecm.annualSavings}/yr</span>
                                 <span>Payback: {ecm.paybackYears}yr</span>
                               </div>
@@ -333,7 +333,7 @@ export default function ROICalculator() {
                               </h4>
                               <p className="text-xs text-muted-foreground mb-2">{ecm.description}</p>
                               <div className="flex gap-4 text-xs">
-                                <span>Cost: £{ecm.initialCost.toLocaleString()}</span>
+                                <span>Cost: £{ecm.initialCost.toLocaleString()}{ecm.grantAmount && <span className="text-emerald-400 ml-1">(−£{ecm.grantAmount.toLocaleString()} {ecm.grantName})</span>}</span>
                                 <span className="text-blue-400">Saves: £{ecm.annualSavings}/yr</span>
                                 <span>Payback: {ecm.paybackYears}yr</span>
                               </div>
@@ -364,6 +364,12 @@ export default function ROICalculator() {
                       <p className="text-3xl font-bold text-foreground mb-1">
                         £{allECMs.reduce((sum, ecm) => sum + ecm.initialCost, 0).toLocaleString()}
                       </p>
+                      {allECMs.some(ecm => ecm.grantAmount) && (
+                        <p className="text-sm text-emerald-400 mb-1">
+                          After grants: £{allECMs.reduce((sum, ecm) => sum + (ecm.netCost ?? ecm.initialCost), 0).toLocaleString()}
+                          {' '}(−£{allECMs.reduce((sum, ecm) => sum + (ecm.grantAmount ?? 0), 0).toLocaleString()} in grants)
+                        </p>
+                      )}
                       <p className="text-sm text-primary">
                         Annual Savings: £{allECMs.reduce((sum, ecm) => sum + ecm.annualSavings, 0).toLocaleString()}/year
                       </p>
