@@ -166,37 +166,53 @@ export default function ROICalculator() {
                     Select an energy conservation measure to see detailed payback
                   </p>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  {allECMs.map((ecm) => (
-                    <button
-                      key={ecm.systemType}
-                      onClick={() => handleSystemSelect(ecm.systemType)}
-                      disabled={loading}
-                      className="group relative overflow-hidden rounded-lg border border-border bg-card p-4 text-left transition-all hover:border-primary hover:bg-card/80 disabled:opacity-50"
-                    >
-                      <div className="flex flex-col items-center text-center gap-2">
-                        <div className="text-3xl">{ecm.emoji}</div>
-                        <div className="flex-1">
-                          <h3 className="text-sm font-semibold text-foreground mb-1">
-                            {ecm.systemType === 'solar' ? 'Solar Panels' :
-                             ecm.systemType === 'hp' ? 'Heat Pump' :
-                             ecm.systemType === 'led' ? 'LED Lighting' :
-                             ecm.systemType === 'insulation' ? 'Insulation' :
-                             ecm.systemType === 'draught_proofing' ? 'Draught Proofing' :
-                             ecm.systemType === 'cylinder_insulation' ? 'Cylinder Jacket' :
-                             ecm.systemType === 'smart_thermostat' ? 'Smart Thermostat' :
-                             'Double Glazing'}
-                          </h3>
-                          <p className="text-xs text-muted-foreground mb-2">
-                            {ecm.description}
-                          </p>
-                          <Badge variant="outline" className="text-xs">
-                            ~£{ecm.initialCost.toLocaleString()}
-                          </Badge>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                  {allECMs.map((ecm) => {
+                    // Determine phase color dot
+                    const phaseColor = ecm.paybackYears < 2 ? 'bg-green-500' : ecm.paybackYears < 5 ? 'bg-yellow-500' : 'bg-blue-500';
+                    
+                    return (
+                      <button
+                        key={ecm.systemType}
+                        onClick={() => handleSystemSelect(ecm.systemType)}
+                        disabled={loading}
+                        className="group relative overflow-hidden rounded-lg border border-border bg-card p-4 text-left transition-all hover:border-primary hover:bg-card/80 disabled:opacity-50"
+                      >
+                        {/* Phase indicator dot */}
+                        <div className={`absolute top-2 right-2 w-2 h-2 rounded-full ${phaseColor}`} />
+                        
+                        <div className="flex flex-col items-center text-center gap-2">
+                          <div className="text-3xl">{ecm.emoji}</div>
+                          <div className="flex-1">
+                            <h3 className="text-sm font-semibold text-foreground mb-1">
+                              {ecm.systemType === 'solar' ? 'Solar Panels' :
+                               ecm.systemType === 'hp' ? 'Heat Pump' :
+                               ecm.systemType === 'led' ? 'LED Lighting' :
+                               ecm.systemType === 'insulation' ? 'Insulation' :
+                               ecm.systemType === 'draught_proofing' ? 'Draught Proofing' :
+                               ecm.systemType === 'cylinder_insulation' ? 'Cylinder Jacket' :
+                               ecm.systemType === 'smart_thermostat' ? 'Smart Thermostat' :
+                               ecm.systemType === 'trvs' ? 'Smart TRVs' :
+                               ecm.systemType === 'pipe_insulation' ? 'Pipe Insulation' :
+                               ecm.systemType === 'radiator_reflectors' ? 'Radiator Reflectors' :
+                               'Double Glazing'}
+                            </h3>
+                            <p className="text-xs text-muted-foreground mb-2">
+                              {ecm.description}
+                            </p>
+                            <Badge variant="outline" className="text-xs">
+                              ~£{ecm.initialCost.toLocaleString()}
+                            </Badge>
+                            {ecm.grantNote && (
+                              <Badge variant="outline" className="text-xs mt-1 border-emerald-500/50 text-emerald-400">
+                                Grant Available
+                              </Badge>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    </button>
-                  ))}
+                      </button>
+                    );
+                  })}
                 </div>
                 <Button
                   onClick={() => setShowFullReport(true)}
@@ -224,6 +240,28 @@ export default function ROICalculator() {
                   <p className="text-muted-foreground">{postcode}</p>
                 </div>
 
+                {/* Fabric-First Advisory - Show if heat pump is in the report AND insulation is in Phase 2+ */}
+                {allECMs.some(ecm => ecm.systemType === 'hp') && 
+                 allECMs.find(ecm => ecm.systemType === 'insulation')?.paybackYears >= 2 && (
+                  <Card className="border-yellow-500/50 bg-yellow-500/10">
+                    <CardContent className="pt-6">
+                      <div className="space-y-3">
+                        <h3 className="text-lg font-semibold text-yellow-400 flex items-center gap-2">
+                          ⚠️ Fabric First: Insulate Before You Heat Pump
+                        </h3>
+                        <p className="text-sm text-foreground">
+                          A heat pump in a poorly insulated home needs to work harder and costs more to run. 
+                          We recommend completing Phase 1 insulation measures first — this can reduce the 
+                          heat pump size (and cost) you need by up to 50%.
+                        </p>
+                        <a href="#" className="text-sm text-yellow-400 hover:text-yellow-300 underline">
+                          Learn More →
+                        </a>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
                 {/* Phase 1: Quick Wins */}
                 {allECMs.filter(ecm => ecm.paybackYears < 2).length > 0 && (
                   <Card className="border-green-500/20 bg-green-500/5">
@@ -242,14 +280,22 @@ export default function ROICalculator() {
                                 {ecm.systemType === 'led' ? 'LED Lighting' :
                                  ecm.systemType === 'cylinder_insulation' ? 'Cylinder Jacket' :
                                  ecm.systemType === 'draught_proofing' ? 'Draught Proofing' :
-                                 ecm.systemType === 'smart_thermostat' ? 'Smart Thermostat' : ecm.systemType}
+                                 ecm.systemType === 'smart_thermostat' ? 'Smart Thermostat' :
+                                 ecm.systemType === 'trvs' ? 'Smart TRVs' :
+                                 ecm.systemType === 'pipe_insulation' ? 'Pipe Insulation' :
+                                 ecm.systemType === 'radiator_reflectors' ? 'Radiator Reflectors' : ecm.systemType}
                               </h4>
                               <p className="text-xs text-muted-foreground mb-2">{ecm.description}</p>
-                              <div className="flex gap-4 text-xs">
+                              <div className="flex gap-4 text-xs flex-wrap">
                                 <span>Cost: £{ecm.initialCost.toLocaleString()}{ecm.grantAmount && <span className="text-emerald-400 ml-1">(−£{ecm.grantAmount.toLocaleString()} {ecm.grantName})</span>}</span>
                                 <span className="text-green-400">Saves: £{ecm.annualSavings}/yr</span>
                                 <span>Payback: {ecm.paybackYears}yr</span>
                               </div>
+                              {ecm.grantNote && (
+                                <Badge variant="outline" className="text-xs mt-2 border-emerald-500/50 text-emerald-400">
+                                  {ecm.grantNote}
+                                </Badge>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -285,14 +331,21 @@ export default function ROICalculator() {
                             <div className="flex-1">
                               <h4 className="font-semibold text-foreground mb-1">
                                 {ecm.systemType === 'insulation' ? 'Insulation' :
-                                 ecm.systemType === 'smart_thermostat' ? 'Smart Thermostat' : ecm.systemType}
+                                 ecm.systemType === 'smart_thermostat' ? 'Smart Thermostat' :
+                                 ecm.systemType === 'draught_proofing' ? 'Draught Proofing' :
+                                 ecm.systemType === 'trvs' ? 'Smart TRVs' : ecm.systemType}
                               </h4>
                               <p className="text-xs text-muted-foreground mb-2">{ecm.description}</p>
-                              <div className="flex gap-4 text-xs">
+                              <div className="flex gap-4 text-xs flex-wrap">
                                 <span>Cost: £{ecm.initialCost.toLocaleString()}{ecm.grantAmount && <span className="text-emerald-400 ml-1">(−£{ecm.grantAmount.toLocaleString()} {ecm.grantName})</span>}</span>
                                 <span className="text-yellow-400">Saves: £{ecm.annualSavings}/yr</span>
                                 <span>Payback: {ecm.paybackYears}yr</span>
                               </div>
+                              {ecm.grantNote && (
+                                <Badge variant="outline" className="text-xs mt-2 border-emerald-500/50 text-emerald-400">
+                                  {ecm.grantNote}
+                                </Badge>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -329,14 +382,20 @@ export default function ROICalculator() {
                               <h4 className="font-semibold text-foreground mb-1">
                                 {ecm.systemType === 'solar' ? 'Solar Panels' :
                                  ecm.systemType === 'hp' ? 'Heat Pump' :
-                                 ecm.systemType === 'double_glazing' ? 'Double Glazing' : ecm.systemType}
+                                 ecm.systemType === 'double_glazing' ? 'Double Glazing' :
+                                 ecm.systemType === 'insulation' ? 'Insulation' : ecm.systemType}
                               </h4>
                               <p className="text-xs text-muted-foreground mb-2">{ecm.description}</p>
-                              <div className="flex gap-4 text-xs">
+                              <div className="flex gap-4 text-xs flex-wrap">
                                 <span>Cost: £{ecm.initialCost.toLocaleString()}{ecm.grantAmount && <span className="text-emerald-400 ml-1">(−£{ecm.grantAmount.toLocaleString()} {ecm.grantName})</span>}</span>
                                 <span className="text-blue-400">Saves: £{ecm.annualSavings}/yr</span>
                                 <span>Payback: {ecm.paybackYears}yr</span>
                               </div>
+                              {ecm.grantNote && (
+                                <Badge variant="outline" className="text-xs mt-2 border-emerald-500/50 text-emerald-400">
+                                  {ecm.grantNote}
+                                </Badge>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -408,9 +467,34 @@ export default function ROICalculator() {
                     Your Payback Calculation
                   </h2>
                   <p className="text-muted-foreground">
-                    {systemType === 'solar' ? 'Solar Panels' : 'Heat Pump'} • {postcode}
+                    {systemType === 'solar' ? 'Solar Panels' : 
+                     systemType === 'hp' ? 'Heat Pump' :
+                     systemType === 'led' ? 'LED Lighting' :
+                     systemType === 'insulation' ? 'Insulation' :
+                     systemType === 'draught_proofing' ? 'Draught Proofing' :
+                     systemType === 'cylinder_insulation' ? 'Cylinder Jacket' :
+                     systemType === 'smart_thermostat' ? 'Smart Thermostat' :
+                     systemType === 'trvs' ? 'Smart TRVs' :
+                     systemType === 'pipe_insulation' ? 'Pipe Insulation' :
+                     systemType === 'radiator_reflectors' ? 'Radiator Reflectors' :
+                     'Double Glazing'} • {postcode}
                   </p>
                 </div>
+
+                {/* Heat Pump Tip */}
+                {systemType === 'hp' && (
+                  <Card className="border-blue-500/50 bg-blue-500/10">
+                    <CardContent className="pt-6">
+                      <p className="text-sm text-foreground flex items-start gap-2">
+                        <span className="text-lg">💡</span>
+                        <span>
+                          <strong>Tip: Insulate first!</strong> Improving your home's fabric before installing a heat pump 
+                          can boost efficiency from SCOP 3.0 to 4.5+ and reduce the system size needed.
+                        </span>
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
 
                 {/* Key Metrics */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

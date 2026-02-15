@@ -1,6 +1,6 @@
 import { getAgileOutgoingTariffs, getCosyOctopusRates, getStandardVariableRates, TariffRate } from './octopus-api';
 
-export type SystemType = 'solar' | 'hp' | 'led' | 'insulation' | 'draught_proofing' | 'cylinder_insulation' | 'smart_thermostat' | 'double_glazing';
+export type SystemType = 'solar' | 'hp' | 'led' | 'insulation' | 'draught_proofing' | 'cylinder_insulation' | 'smart_thermostat' | 'double_glazing' | 'trvs' | 'pipe_insulation' | 'radiator_reflectors';
 
 export interface PaybackData {
   systemType: SystemType;
@@ -16,6 +16,7 @@ export interface PaybackData {
   switchRecommendation?: string;
   description?: string;
   emoji?: string;
+  grantNote?: string;
 }
 
 // Average UK electricity consumption (kWh/year)
@@ -79,6 +80,12 @@ export async function calculatePayback(postcode: string, systemType: SystemType)
         return await calculateSmartThermostatPayback(postcode);
       case 'double_glazing':
         return await calculateDoubleGlazingPayback(postcode);
+      case 'trvs':
+        return await calculateTRVsPayback(postcode);
+      case 'pipe_insulation':
+        return await calculatePipeInsulationPayback(postcode);
+      case 'radiator_reflectors':
+        return await calculateRadiatorReflectorsPayback(postcode);
       default:
         return getFallbackPayback(systemType);
     }
@@ -200,11 +207,20 @@ async function calculateInsulationPayback(postcode: string): Promise<PaybackData
   const annualSavings = heatingReduction * avgRate;
   const initialCost = 1500; // £1,500 for loft/cavity wall insulation
   
+  // GBIS grant logic: potentially FREE for EPC D-G homes
+  // Since we don't know EPC rating at this stage, we add a note
+  const grantAmount = 1500; // Full coverage under GBIS
+  const netCost = 0; // Potentially free
+  
   return {
     systemType: 'insulation',
     paybackYears: Math.round((initialCost / annualSavings) * 10) / 10,
     annualSavings: Math.round(annualSavings),
     initialCost,
+    grantAmount,
+    grantName: 'GBIS (EPC D-G = FREE)',
+    netCost,
+    grantNote: 'May be FREE via GBIS if your home is EPC D-G',
     description: 'Loft and cavity wall insulation',
     emoji: '🧱'
   };
@@ -285,6 +301,63 @@ async function calculateDoubleGlazingPayback(postcode: string): Promise<PaybackD
   };
 }
 
+async function calculateTRVsPayback(postcode: string): Promise<PaybackData> {
+  const { unitRates } = await getStandardVariableRates(postcode);
+  const avgRate = calculateAverageRate(unitRates);
+  
+  // Smart TRVs: 15% heating demand reduction via scheduling + geofencing
+  const heatingReduction = AVG_HEATING_DEMAND * 0.15;
+  const annualSavings = heatingReduction * avgRate;
+  const initialCost = 400; // £50/radiator × 8 radiators (Tado/Hive)
+  
+  return {
+    systemType: 'trvs',
+    paybackYears: Math.round((initialCost / annualSavings) * 10) / 10,
+    annualSavings: Math.round(annualSavings),
+    initialCost,
+    description: 'Smart TRVs — zone control for every room',
+    emoji: '🎛️'
+  };
+}
+
+async function calculatePipeInsulationPayback(postcode: string): Promise<PaybackData> {
+  const { unitRates } = await getStandardVariableRates(postcode);
+  const avgRate = calculateAverageRate(unitRates);
+  
+  // Pipe insulation: 400 kWh/yr savings (heat loss from pipes in unheated spaces)
+  const savingsKwh = 400;
+  const annualSavings = savingsKwh * avgRate;
+  const initialCost = 150; // £150 professional installation, full home
+  
+  return {
+    systemType: 'pipe_insulation',
+    paybackYears: Math.round((initialCost / annualSavings) * 10) / 10,
+    annualSavings: Math.round(annualSavings),
+    initialCost,
+    description: 'Insulate hot water and heating pipes',
+    emoji: '🔧'
+  };
+}
+
+async function calculateRadiatorReflectorsPayback(postcode: string): Promise<PaybackData> {
+  const { unitRates } = await getStandardVariableRates(postcode);
+  const avgRate = calculateAverageRate(unitRates);
+  
+  // Radiator reflectors: 3% of heating demand (radiators on external walls)
+  const heatingReduction = AVG_HEATING_DEMAND * 0.03;
+  const annualSavings = heatingReduction * avgRate;
+  const initialCost = 120; // £120 for Radflek panels (8 radiators × £15)
+  
+  return {
+    systemType: 'radiator_reflectors',
+    paybackYears: Math.round((initialCost / annualSavings) * 10) / 10,
+    annualSavings: Math.round(annualSavings),
+    initialCost,
+    description: 'Reflect heat back into rooms, not into walls',
+    emoji: '🪞'
+  };
+}
+
 export async function getAllECMs(postcode: string): Promise<PaybackData[]> {
   try {
     const ecms = await Promise.all([
@@ -296,6 +369,9 @@ export async function getAllECMs(postcode: string): Promise<PaybackData[]> {
       calculateCylinderInsulationPayback(postcode),
       calculateSmartThermostatPayback(postcode),
       calculateDoubleGlazingPayback(postcode),
+      calculateTRVsPayback(postcode),
+      calculatePipeInsulationPayback(postcode),
+      calculateRadiatorReflectorsPayback(postcode),
     ]);
     
     // Sort by payback period (shortest first)
@@ -305,10 +381,13 @@ export async function getAllECMs(postcode: string): Promise<PaybackData[]> {
     // Return fallback data for all ECMs
     return [
       { systemType: 'led', paybackYears: 0.4, annualSavings: 494, initialCost: 200, description: 'LED lighting retrofit — saves ~1,680 kWh/yr', emoji: '💡' },
+      { systemType: 'pipe_insulation', paybackYears: 0.5, annualSavings: 118, initialCost: 150, description: 'Insulate hot water and heating pipes', emoji: '🔧' },
+      { systemType: 'radiator_reflectors', paybackYears: 0.8, annualSavings: 106, initialCost: 120, description: 'Reflect heat back into rooms, not into walls', emoji: '🪞' },
       { systemType: 'cylinder_insulation', paybackYears: 0.9, annualSavings: 115, initialCost: 100, description: 'Hot water cylinder jacket', emoji: '🚿' },
+      { systemType: 'trvs', paybackYears: 1.4, annualSavings: 530, initialCost: 400, description: 'Smart TRVs — zone control for every room', emoji: '🎛️' },
       { systemType: 'draught_proofing', paybackYears: 2.5, annualSavings: 120, initialCost: 300, description: 'Draught-proofing', emoji: '🌬️' },
       { systemType: 'smart_thermostat', paybackYears: 1.7, annualSavings: 120, initialCost: 200, description: 'Smart thermostat', emoji: '🌡️' },
-      { systemType: 'insulation', paybackYears: 6.3, annualSavings: 240, initialCost: 1500, description: 'Loft/cavity insulation', emoji: '🧱' },
+      { systemType: 'insulation', paybackYears: 6.3, annualSavings: 240, initialCost: 1500, grantAmount: 1500, grantName: 'GBIS (EPC D-G = FREE)', netCost: 0, grantNote: 'May be FREE via GBIS if your home is EPC D-G', description: 'Loft/cavity insulation', emoji: '🧱' },
       { systemType: 'hp', paybackYears: 3.0, annualSavings: 1500, initialCost: 12000, grantAmount: 7500, grantName: 'BUS', netCost: 4500, description: 'Heat pump (SCOP 3.5, after BUS grant)', emoji: '🔥' },
       { systemType: 'solar', paybackYears: 8, annualSavings: 1000, initialCost: 8000, description: 'Solar panels', emoji: '☀️' },
       { systemType: 'double_glazing', paybackYears: 33.3, annualSavings: 150, initialCost: 5000, description: 'Double glazing', emoji: '🪟' },
