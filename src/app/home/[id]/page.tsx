@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,10 +9,13 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { Home as HomeIcon, TrendingUp, Zap, Share2, Calendar } from "lucide-react";
 import { Home, ScoreHistoryEntry, Improvement } from "@/lib/types";
 import { getAllECMs, PaybackData } from "@/lib/roi-calculator";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import HomeQuestionnaire from "@/components/HomeQuestionnaire";
 
 export default function HomePage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useAuth();
   const homeId = params.id as string;
 
@@ -23,6 +26,7 @@ export default function HomePage() {
   const [isOwner, setIsOwner] = useState(false);
   const [ownerName, setOwnerName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isSurveyOpen, setIsSurveyOpen] = useState(false);
 
   useEffect(() => {
     if (!homeId) return;
@@ -53,6 +57,12 @@ export default function HomePage() {
 
     fetchHome();
   }, [homeId]);
+
+  useEffect(() => {
+    if (searchParams.get('survey') === 'true' && home) {
+      setIsSurveyOpen(true);
+    }
+  }, [searchParams, home]);
 
   if (loading) {
     return (
@@ -241,6 +251,42 @@ export default function HomePage() {
           <h2 className="text-xl font-bold mb-4">Home Biography</h2>
           <p className="text-muted-foreground leading-relaxed">{biography}</p>
         </Card>
+
+        {/* Questionnaire Banner */}
+        {(home?.walls_description === null || home?.heating_description === null || home?.windows_description === null) && (
+          <Card className="p-6">
+            <h2 className="text-xl font-bold mb-2">Help your home tell its full story</h2>
+            <p className="text-muted-foreground mb-4">Answer a few questions to get personalized recommendations</p>
+            <Dialog open={isSurveyOpen} onOpenChange={setIsSurveyOpen}>
+              <DialogTrigger asChild>
+                <Button>Start Questionnaire →</Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-lg">
+                <HomeQuestionnaire
+                  homeId={homeId}
+                  countryCode="GB"
+                  onComplete={async (data) => {
+                    try {
+                      const res = await fetch(`/api/homes/${homeId}/survey`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data),
+                      });
+                      if (res.ok) {
+                        const { home: updatedHome } = await res.json();
+                        setHome(updatedHome);
+                      }
+                    } catch (e) {
+                      console.error(e);
+                    }
+                    setIsSurveyOpen(false);
+                  }}
+                  onSkip={() => setIsSurveyOpen(false)}
+                />
+              </DialogContent>
+            </Dialog>
+          </Card>
+        )}
 
         {/* What's Next */}
         {recommendations.length > 0 && (

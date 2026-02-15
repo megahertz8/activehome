@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,6 +33,8 @@ function OnboardingContent() {
   const [claiming, setClaiming] = useState(false);
   const [error, setError] = useState("");
   const [score, setScore] = useState<number | null>(null);
+  const [claimedHome, setClaimedHome] = useState<Home | null>(null);
+  const [hasEPC, setHasEPC] = useState(true);
 
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
