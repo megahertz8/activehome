@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/components/auth/AuthProvider";
+import Navbar from "@/components/Navbar";
 
 export const metadata: Metadata = {
   title: "Evolving Home — Your Home's Energy Score in 30 Seconds",
@@ -23,7 +24,10 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <body className="min-h-screen bg-background text-foreground antialiased">
         <AuthProvider>
-          {children}
+          <Navbar />
+          <main className="pt-14">
+            {children}
+          </main>
         </AuthProvider>
       </body>
     </html>
