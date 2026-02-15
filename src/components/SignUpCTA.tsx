@@ -6,16 +6,20 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { detectCountry } from "@/lib/adapters";
+import GooglePlacesAutocomplete from "./GooglePlacesAutocomplete";
 
 export default function SignUpCTA() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const [address, setAddress] = useState("");
   const [postcode, setPostcode] = useState("");
+  const [lat, setLat] = useState<number | null>(null);
+  const [lng, setLng] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [homes, setHomes] = useState<any[]>([]);
   const [homesLoading, setHomesLoading] = useState(true);
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
   // Fetch user's homes if logged in
   useEffect(() => {
@@ -34,12 +38,24 @@ export default function SignUpCTA() {
     }
   }, [user]);
 
-  const handleSaveHome = async (e: React.FormEvent) => {
+  const handlePlaceSelect = (place: any) => {
+  setAddress(place.formatted_address || "");
+  const postcodeComp = place.address_components?.find((comp: any) => comp.types?.includes("postal_code"));
+  if (postcodeComp?.long_name) {
+    setPostcode(postcodeComp.long_name);
+  }
+  if (place.geometry?.location) {
+    setLat(place.geometry.location.lat());
+    setLng(place.geometry.location.lng());
+  }
+};
+
+const handleSaveHome = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
-    if (!address.trim() || !postcode.trim()) {
-      setError("Please enter both address and postcode");
+    if (!address.trim() || !postcode.trim() || (!!apiKey && lat === null)) {
+      setError(!!apiKey ? "Please select your address from the suggestions and enter your postcode" : "Please enter both address and postcode");
       return;
     }
 
@@ -67,6 +83,8 @@ export default function SignUpCTA() {
         body: JSON.stringify({
           postcode: postcode.trim(),
           address: address.trim(),
+          lat,
+          lng,
           lmk_key: scoreData.lmk_key,
           current_rating: scoreData.current_energy_rating,
           potential_rating: scoreData.potential_energy_rating,
@@ -140,14 +158,23 @@ export default function SignUpCTA() {
   return (
     <form onSubmit={handleSaveHome} className="w-full max-w-md mb-16">
       <div className="space-y-3">
-        <Input
-          type="text"
-          placeholder="Enter your address"
-          value={address}
-          onChange={(e) => setAddress(e.target.value)}
-          className="bg-card border-border text-foreground placeholder:text-muted-foreground h-12 text-lg"
-          disabled={saving}
-        />
+        {!!apiKey ? (
+          <GooglePlacesAutocomplete
+            onPlaceSelect={handlePlaceSelect}
+            apiKey={apiKey}
+            placeholder="Search and select your address"
+            className="bg-card border-border text-foreground placeholder:text-muted-foreground h-12 text-lg"
+          />
+        ) : (
+          <Input
+            type="text"
+            placeholder="Enter your address"
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            className="bg-card border-border text-foreground placeholder:text-muted-foreground h-12 text-lg"
+            disabled={saving}
+          />
+        )}
         <Input
           type="text"
           placeholder="Enter your postcode"
@@ -158,7 +185,7 @@ export default function SignUpCTA() {
         />
         <Button
           type="submit"
-          disabled={saving || !address.trim() || !postcode.trim()}
+          disabled={saving || !address.trim() || !postcode.trim() || (!!apiKey && lat === null)}
           className="bg-primary text-primary-foreground hover:bg-primary/90 h-12 px-6 text-lg font-semibold w-full"
         >
           {saving ? "Saving..." : "Save My Home"}
