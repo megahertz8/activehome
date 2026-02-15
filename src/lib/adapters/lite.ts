@@ -56,6 +56,7 @@ export class LiteAdapter implements CountryAdapter {
       'MX': { name: 'Mexico', currency: 'MXN', locale: 'es-MX' },
       'AR': { name: 'Argentina', currency: 'ARS', locale: 'es-AR' },
       'CL': { name: 'Chile', currency: 'CLP', locale: 'es-CL' },
+      'IL': { name: 'Israel', currency: 'ILS', locale: 'he-IL' },
     };
 
     const info = countryMap[this.countryCode] || { name: 'Unknown Country', currency: 'EUR', locale: 'en-US' };

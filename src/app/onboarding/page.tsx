@@ -231,7 +231,6 @@ function OnboardingContent() {
                   apiKey={apiKey}
                   placeholder="Type your home address..."
                   className="h-16 text-xl"
-                  country="gb"
                 />
               </div>
 

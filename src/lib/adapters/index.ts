@@ -56,6 +56,11 @@ export function detectCountry(postcode: string, request?: Request): string {
     }
   }
 
+  // Israeli postcode (7 digits)
+  if (/^\d{7}$/.test(cleaned)) {
+    return 'IL';
+  }
+
   // Default to GB for backward compatibility
   return 'GB';
 }
